@@ -1,0 +1,170 @@
+{
+ "anima-turbo-elara-1.png": {
+  "reply": "[\n    {\"label\": \"person\", \"bbox_2d\": [73, 71, 273, 625]},\n    {\"label\": \"person\", \"bbox_2d\": [357, 67, 567, 625]},\n    {\"label\": \"person\", \"bbox_2d\": [683, 83, 917, 625]}\n]",
+  "seconds": 5.9
+ },
+ "anima-turbo-elara-2.png": {
+  "reply": "[\n    {\"label\": \"person\", \"bbox_2d\": [34, 54, 320, 625]},\n    {\"label\": \"person\", \"bbox_2d\": [347, 54, 640, 625]},\n    {\"label\": \"person\", \"bbox_2d\": [680, 54, 970, 625]}\n]",
+  "seconds": 5.7
+ },
+ "anima-turbo-kael-1.png": {
+  "reply": "[\n    {\"label\": \"person\", \"bbox_2d\": [74, 37, 300, 750]},\n    {\"label\": \"person\", \"bbox_2d\": [337, 37, 563, 750]},\n    {\"label\": \"person\", \"bbox_2d\": [667, 37, 900, 750]}\n]",
+  "seconds": 5.7
+ },
+ "anima-turbo-kael-2.png": {
+  "reply": "[\n    {\"label\": \"left person\", \"bbox_2d\": [58, 58, 300, 750]},\n    {\"label\": \"center person\", \"bbox_2d\": [375, 37, 625, 750]},\n    {\"label\": \"right person\", \"bbox_2d\": [690, 37, 940, 750]}\n]",
+  "seconds": 5.9
+ },
+ "anima-turbo-lantern-1.png": {
+  "reply": "[]",
+  "seconds": 3.8
+ },
+ "anima-turbo-lantern-2.png": {
+  "reply": "[]",
+  "seconds": 4
+ },
+ "fibo-2.0-turbo-elara-1.png": {
+  "reply": "[{\"label\": \"person\", \"bbox_2d\": [78, 52, 238, 512]}, {\"label\": \"person\", \"bbox_2d\": [407, 52, 598, 512]}, {\"label\": \"person\", \"bbox_2d\": [727, 52, 942, 512]}]",
+  "seconds": 5.8
+ },
+ "fibo-2.0-turbo-elara-2.png": {
+  "reply": "[{\"label\": \"person\", \"bbox_2d\": [74, 71, 242, 537]}, {\"label\": \"person\", \"bbox_2d\": [392, 55, 605, 537]}, {\"label\": \"person\", \"bbox_2d\": [716, 55, 952, 537]}]",
+  "seconds": 5.7
+ },
+ "fibo-2.0-turbo-kael-1.png": {
+  "reply": "[{\"label\": \"person\", \"bbox_2d\": [73, 61, 233, 517]}, {\"label\": \"person\", \"bbox_2d\": [412, 50, 582, 525]}, {\"label\": \"person\", \"bbox_2d\": [730, 50, 900, 525]}]",
+  "seconds": 6
+ },
+ "fibo-2.0-turbo-kael-2.png": {
+  "reply": "[{\"label\": \"person\", \"bbox_2d\": [73, 63, 252, 517]}, {\"label\": \"person\", \"bbox_2d\": [400, 56, 588, 517]}, {\"label\": \"person\", \"bbox_2d\": [720, 56, 908, 517]}]",
+  "seconds": 5.8
+ },
+ "fibo-2.0-turbo-lantern-1.png": {
+  "reply": "[]",
+  "seconds": 4.3
+ },
+ "fibo-2.0-turbo-lantern-2.png": {
+  "reply": "[]",
+  "seconds": 4.1
+ },
+ "flux3-klein-elara-1.png": {
+  "reply": "[{\"label\": \"person\", \"bbox_2d\": [0, 37, 333, 650]}, {\"label\": \"person\", \"bbox_2d\": [333, 37, 666, 650]}, {\"label\": \"person\", \"bbox_2d\": [666, 37, 1000, 650]}]",
+  "seconds": 5.8
+ },
+ "flux3-klein-elara-2.png": {
+  "reply": "[{\"label\": \"person\", \"bbox_2d\": [0, 0, 333, 600]}, {\"label\": \"person\", \"bbox_2d\": [333, 0, 666, 600]}, {\"label\": \"person\", \"bbox_2d\": [666, 0, 1000, 600]}]",
+  "seconds": 5.9
+ },
+ "flux3-klein-kael-1.png": {
+  "reply": "[{\"label\": \"person\", \"bbox_2d\": [0, 0, 333, 687]}, {\"label\": \"person\", \"bbox_2d\": [333, 0, 666, 687]}, {\"label\": \"person\", \"bbox_2d\": [666, 0, 1000, 687]}]",
+  "seconds": 5.8
+ },
+ "flux3-klein-kael-2.png": {
+  "reply": "[{\"label\": \"person\", \"bbox_2d\": [0, 0, 333, 700]}, {\"label\": \"person\", \"bbox_2d\": [333, 0, 666, 700]}, {\"label\": \"person\", \"bbox_2d\": [666, 0, 1000, 700]}]",
+  "seconds": 5.8
+ },
+ "flux3-klein-lantern-1.png": {
+  "reply": "[]",
+  "seconds": 4.1
+ },
+ "flux3-klein-lantern-2.png": {
+  "reply": "[]",
+  "seconds": 4.3
+ },
+ "krea-2-lora-elara-1.png": {
+  "reply": "[\n    {\"label\": \"person 1\", \"bbox_2d\": [87, 42, 278, 562]},\n    {\"label\": \"person 2\", \"bbox_2d\": [405, 37, 620, 562]},\n    {\"label\": \"person 3\", \"bbox_2d\": [707, 37, 957, 562]}\n]",
+  "seconds": 6
+ },
+ "krea-2-lora-elara-2.png": {
+  "reply": "[\n    {\"label\": \"person 1\", \"bbox_2d\": [87, 37, 272, 537]},\n    {\"label\": \"person 2\", \"bbox_2d\": [405, 37, 600, 537]},\n    {\"label\": \"person 3\", \"bbox_2d\": [705, 37, 910, 537]}\n]",
+  "seconds": 6
+ },
+ "krea-2-lora-kael-1.png": {
+  "reply": "[{\"label\": \"person 1\", \"bbox_2d\": [0, 0, 350, 683]}, {\"label\": \"person 2\", \"bbox_2d\": [350, 0, 700, 683]}, {\"label\": \"person 3\", \"bbox_2d\": [700, 0, 1000, 683]}]",
+  "seconds": 5.8
+ },
+ "krea-2-lora-kael-2.png": {
+  "reply": "[\n    {\"label\": \"person 1\", \"bbox_2d\": [57, 24, 300, 666]},\n    {\"label\": \"person 2\", \"bbox_2d\": [380, 24, 630, 666]},\n    {\"label\": \"person 3\", \"bbox_2d\": [690, 24, 940, 666]}\n]",
+  "seconds": 6.1
+ },
+ "krea-2-lora-lantern-1.png": {
+  "reply": "[]",
+  "seconds": 4
+ },
+ "krea-2-lora-lantern-2.png": {
+  "reply": "[]",
+  "seconds": 4
+ },
+ "qwen-image-2.1-elara-1.png": {
+  "reply": "[{\"label\": \"person\", \"bbox_2d\": [70, 31, 280, 620]}, {\"label\": \"person\", \"bbox_2d\": [380, 31, 600, 620]}, {\"label\": \"person\", \"bbox_2d\": [690, 31, 990, 620]}]",
+  "seconds": 5.9
+ },
+ "qwen-image-2.1-elara-2.png": {
+  "reply": "[{\"label\": \"person\", \"bbox_2d\": [70, 19, 278, 500]}, {\"label\": \"person\", \"bbox_2d\": [380, 19, 600, 500]}, {\"label\": \"person\", \"bbox_2d\": [700, 19, 930, 500]}]",
+  "seconds": 5.7
+ },
+ "qwen-image-2.1-kael-1.png": {
+  "reply": "[{\"label\": \"person\", \"bbox_2d\": [54, 27, 287, 658]}, {\"label\": \"person\", \"bbox_2d\": [357, 27, 650, 658]}, {\"label\": \"person\", \"bbox_2d\": [700, 27, 999, 658]}]",
+  "seconds": 5.6
+ },
+ "qwen-image-2.1-kael-2.png": {
+  "reply": "[{\"label\": \"man\", \"bbox_2d\": [62, 22, 278, 588]}, {\"label\": \"man\", \"bbox_2d\": [388, 22, 628, 588]}, {\"label\": \"man\", \"bbox_2d\": [708, 22, 958, 588]}]",
+  "seconds": 6
+ },
+ "qwen-image-2.1-lantern-1.png": {
+  "reply": "[]",
+  "seconds": 3.8
+ },
+ "qwen-image-2.1-lantern-2.png": {
+  "reply": "[]",
+  "seconds": 3.8
+ },
+ "qwen-image-2.1-turbo-elara-1.png": {
+  "reply": "[{\"label\": \"person\", \"bbox_2d\": [70, 37, 277, 650]}, {\"label\": \"person\", \"bbox_2d\": [380, 37, 600, 650]}, {\"label\": \"person\", \"bbox_2d\": [680, 37, 900, 650]}]",
+  "seconds": 6.2
+ },
+ "qwen-image-2.1-turbo-elara-2.png": {
+  "reply": "[{\"label\": \"person\", \"bbox_2d\": [70, 24, 266, 512]}, {\"label\": \"person\", \"bbox_2d\": [390, 24, 608, 512]}, {\"label\": \"person\", \"bbox_2d\": [700, 24, 936, 512]}]",
+  "seconds": 5.8
+ },
+ "qwen-image-2.1-turbo-kael-1.png": {
+  "reply": "[{\"label\": \"person\", \"bbox_2d\": [65, 37, 275, 700]}, {\"label\": \"person\", \"bbox_2d\": [375, 37, 585, 700]}, {\"label\": \"person\", \"bbox_2d\": [700, 37, 910, 700]}]",
+  "seconds": 6
+ },
+ "qwen-image-2.1-turbo-kael-2.png": {
+  "reply": "[{\"label\": \"person\", \"bbox_2d\": [70, 27, 275, 598]}, {\"label\": \"person\", \"bbox_2d\": [380, 27, 650, 598]}, {\"label\": \"person\", \"bbox_2d\": [700, 27, 950, 598]}]",
+  "seconds": 5.9
+ },
+ "qwen-image-2.1-turbo-lantern-1.png": {
+  "reply": "[]",
+  "seconds": 4.3
+ },
+ "qwen-image-2.1-turbo-lantern-2.png": {
+  "reply": "[]",
+  "seconds": 4.1
+ },
+ "z-image-turbo-elara-1.png": {
+  "reply": "[{\"label\": \"person\", \"bbox_2d\": [50, 74, 267, 645]}, {\"label\": \"person\", \"bbox_2d\": [377, 74, 617, 645]}, {\"label\": \"person\", \"bbox_2d\": [720, 74, 997, 645]}]",
+  "seconds": 5.7
+ },
+ "z-image-turbo-elara-2.png": {
+  "reply": "[{\"label\": \"person\", \"bbox_2d\": [73, 93, 288, 656]}, {\"label\": \"person\", \"bbox_2d\": [398, 93, 628, 656]}, {\"label\": \"person\", \"bbox_2d\": [730, 93, 997, 656]}]",
+  "seconds": 5.7
+ },
+ "z-image-turbo-kael-1.png": {
+  "reply": "[{\"label\": \"person\", \"bbox_2d\": [0, 71, 333, 750]}, {\"label\": \"person\", \"bbox_2d\": [333, 71, 666, 750]}, {\"label\": \"person\", \"bbox_2d\": [666, 71, 1000, 750]}]",
+  "seconds": 5.8
+ },
+ "z-image-turbo-kael-2.png": {
+  "reply": "[{\"label\": \"person\", \"bbox_2d\": [67, 78, 273, 725]}, {\"label\": \"person\", \"bbox_2d\": [397, 62, 627, 725]}, {\"label\": \"person\", \"bbox_2d\": [733, 70, 977, 725]}]",
+  "seconds": 5.8
+ },
+ "z-image-turbo-lantern-1.png": {
+  "reply": "[]",
+  "seconds": 5.5
+ },
+ "z-image-turbo-lantern-2.png": {
+  "reply": "[]",
+  "seconds": 4.2
+ }
+}

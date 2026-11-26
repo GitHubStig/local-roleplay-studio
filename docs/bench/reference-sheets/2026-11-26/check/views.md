@@ -1,0 +1,2 @@
+<!-- How many times the Subject is shown, each one's own box and turn. -->
+This picture is meant to show {{who}} several times side by side. Count every time {{name}} is shown, then answer with JSON only: a list, left to right, one object per time {{name}} is shown, each {"bbox_2d": [x1, y1, x2, y2] in coordinates from 0 to 1000 tightly around that one alone, "facing": which way it's turned as seen in the picture, one of "front", "three-quarter left", "profile left", "three-quarter right", "profile right"}.

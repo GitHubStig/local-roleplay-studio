@@ -1,7 +1,7 @@
 /**
  * The area the face pass repaints over a head: its box grown by a fifth of its size on each side,
  * its edge softened, white on black, as the 2026-11-25 bench found showed no seam
- * (docs/reference-sheets-plans.md, stage 0: 20%, blurred 24 px at 1024²).
+ * (ADR 0045, stage 0: 20%, blurred 24 px at 1024²).
  */
 import decodePng from '@jsquash/png/decode.js'
 import encodePng from '@jsquash/png/encode.js'
@@ -57,7 +57,7 @@ export async function headArea(
 /**
  * Whether an area painted for an edit (`png`, white repainted, at any size) touches `box`
  * (thousandths): a pixel in the box more than half white. So an edit's face pass repaints only the
- * heads its edit may have changed (docs/reference-sheets-plans.md, stage 5).
+ * heads its edit may have changed (ADR 0045, stage 5).
  */
 export async function touches(png: Uint8Array<ArrayBuffer>, box: Head['box']): Promise<boolean> {
   const { data, width, height } = await decodePng(

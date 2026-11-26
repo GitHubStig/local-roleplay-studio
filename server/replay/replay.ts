@@ -31,7 +31,7 @@ export interface Replay {
   /** Whether to picture and render every Frame afterwards (true unless said otherwise). */
   pictures?: boolean
   /**
-   * Reference sheets, made from the Look (docs/reference-sheets-plans.md): asked for, or not, as
+   * Reference sheets, made from the Look (ADR 0045): asked for, or not, as
    * the Session starts; left out, as Settings say.
    */
   sheets?: boolean

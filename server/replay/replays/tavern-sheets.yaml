@@ -1,4 +1,4 @@
-# The public tavern Scenario as a Roleplay with reference sheets (docs/reference-sheets-plans.md):
+# The public tavern Scenario as a Roleplay with reference sheets (ADR 0045):
 # its Cast, then its Look and a sheet of each of its Subjects, made as the scene begins. Run with
 # --no-pictures to make only the sheets, and with --on mflux or --on comfyui (and --image-model)
 # to make them on one runtime.

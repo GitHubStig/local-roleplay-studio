@@ -1,0 +1,1613 @@
+{
+ "anima-turbo-elara-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile right"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "flaw": "Its views aren't the front, a three-quarter turn and the profile, in that order (it read front, front, profile).",
+  "seconds": 16.4
+ },
+ "anima-turbo-elara-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile left"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 15.5
+ },
+ "anima-turbo-kael-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile right"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 15.5
+ },
+ "anima-turbo-kael-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     50,
+     292,
+     997
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     275,
+     33,
+     725,
+     997
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     700,
+     50,
+     1000,
+     997
+    ],
+    "facing": "three-quarter right"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "flaw": "Its views aren't the front, a three-quarter turn and the profile, in that order (it read three-quarter, front, three-quarter).",
+  "seconds": 15.5
+ },
+ "anima-turbo-lantern-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     58,
+     27,
+     242,
+     967
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     288,
+     0,
+     538,
+     997
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     570,
+     27,
+     764,
+     967
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     788,
+     27,
+     982,
+     967
+    ],
+    "facing": "front"
+   }
+  ],
+  "heads": 0,
+  "writing": "",
+  "others": "",
+  "flaw": "It shows the Lantern of Vael 4 times, not three times.",
+  "seconds": 14.3
+ },
+ "anima-turbo-lantern-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "front"
+   }
+  ],
+  "heads": 0,
+  "writing": "",
+  "others": "",
+  "seconds": 13.9
+ },
+ "fibo-2.0-turbo-elara-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile left"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 15.6
+ },
+ "fibo-2.0-turbo-elara-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile left"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 15.6
+ },
+ "fibo-2.0-turbo-kael-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile left"
+   }
+  ],
+  "heads": 3,
+  "writing": "Kael",
+  "others": "",
+  "flaw": "It has writing on it: “Kael”.",
+  "seconds": 15.6
+ },
+ "fibo-2.0-turbo-kael-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile left"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 15.5
+ },
+ "fibo-2.0-turbo-lantern-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     64,
+     44,
+     264,
+     894
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     396,
+     44,
+     596,
+     894
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     738,
+     44,
+     938,
+     894
+    ],
+    "facing": "three-quarter right"
+   }
+  ],
+  "heads": 0,
+  "writing": "",
+  "others": "",
+  "seconds": 13.9
+ },
+ "fibo-2.0-turbo-lantern-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     53,
+     37,
+     262,
+     907
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     392,
+     37,
+     601,
+     907
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     722,
+     37,
+     931,
+     907
+    ],
+    "facing": "three-quarter right"
+   }
+  ],
+  "heads": 0,
+  "writing": "Lantern of Vael",
+  "others": "",
+  "flaw": "It has writing on it: “Lantern of Vael”.",
+  "seconds": 13.9
+ },
+ "flux3-klein-elara-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile right"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 15.7
+ },
+ "flux3-klein-elara-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile right"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 15.6
+ },
+ "flux3-klein-kael-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile right"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 17.1
+ },
+ "flux3-klein-kael-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile right"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 15.4
+ },
+ "flux3-klein-lantern-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     75,
+     37,
+     258,
+     962
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     407,
+     37,
+     590,
+     962
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     739,
+     37,
+     922,
+     962
+    ],
+    "facing": "front"
+   }
+  ],
+  "heads": 0,
+  "writing": "",
+  "others": "",
+  "seconds": 13.7
+ },
+ "flux3-klein-lantern-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     60,
+     27,
+     260,
+     967
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     380,
+     27,
+     580,
+     967
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     700,
+     27,
+     900,
+     967
+    ],
+    "facing": "three-quarter right"
+   }
+  ],
+  "heads": 0,
+  "writing": "",
+  "others": "",
+  "seconds": 13.9
+ },
+ "krea-2-lora-elara-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     33,
+     387,
+     997
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     377,
+     33,
+     699,
+     997
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     689,
+     33,
+     1000,
+     997
+    ],
+    "facing": "profile right"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 15.7
+ },
+ "krea-2-lora-elara-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     33,
+     383,
+     997
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     383,
+     33,
+     700,
+     997
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     700,
+     33,
+     1000,
+     997
+    ],
+    "facing": "profile right"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 15.5
+ },
+ "krea-2-lora-kael-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     383,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     350,
+     0,
+     725,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     680,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile right"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 15.4
+ },
+ "krea-2-lora-kael-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     375,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     350,
+     0,
+     725,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     700,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile right"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 15.6
+ },
+ "krea-2-lora-lantern-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     72,
+     44,
+     272,
+     928
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     392,
+     44,
+     592,
+     928
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     712,
+     44,
+     912,
+     928
+    ],
+    "facing": "front"
+   }
+  ],
+  "heads": 0,
+  "writing": "",
+  "others": "",
+  "seconds": 13.6
+ },
+ "krea-2-lora-lantern-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     73,
+     44,
+     273,
+     944
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     393,
+     44,
+     593,
+     944
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     713,
+     44,
+     913,
+     944
+    ],
+    "facing": "front"
+   }
+  ],
+  "heads": 0,
+  "writing": "",
+  "others": "",
+  "seconds": 14.6
+ },
+ "qwen-image-2.1-elara-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile left"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "candle on a sconce",
+  "seconds": 15.7
+ },
+ "qwen-image-2.1-elara-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile left"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "a lit oil lamp on the wall",
+  "seconds": 16
+ },
+ "qwen-image-2.1-kael-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile right"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "candle",
+  "seconds": 15.6
+ },
+ "qwen-image-2.1-kael-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile left"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "a lit oil lamp",
+  "seconds": 15.7
+ },
+ "qwen-image-2.1-lantern-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     85,
+     19,
+     270,
+     967
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     405,
+     19,
+     590,
+     967
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     725,
+     19,
+     910,
+     967
+    ],
+    "facing": "three-quarter right"
+   }
+  ],
+  "heads": 0,
+  "writing": "",
+  "others": "",
+  "seconds": 13.6
+ },
+ "qwen-image-2.1-lantern-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     70,
+     27,
+     268,
+     927
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     398,
+     27,
+     596,
+     927
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     726,
+     27,
+     924,
+     927
+    ],
+    "facing": "three-quarter right"
+   }
+  ],
+  "heads": 0,
+  "writing": "",
+  "others": "",
+  "seconds": 14.1
+ },
+ "qwen-image-2.1-turbo-elara-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile left"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "candle",
+  "seconds": 15.8
+ },
+ "qwen-image-2.1-turbo-elara-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile left"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 15.8
+ },
+ "qwen-image-2.1-turbo-kael-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile left"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 15.3
+ },
+ "qwen-image-2.1-turbo-kael-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile left"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 15.6
+ },
+ "qwen-image-2.1-turbo-lantern-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     85,
+     19,
+     270,
+     960
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     415,
+     19,
+     600,
+     960
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     725,
+     19,
+     910,
+     960
+    ],
+    "facing": "front"
+   }
+  ],
+  "heads": 0,
+  "writing": "",
+  "others": "",
+  "seconds": 13.6
+ },
+ "qwen-image-2.1-turbo-lantern-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     77,
+     22,
+     267,
+     922
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     410,
+     22,
+     599,
+     922
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     742,
+     22,
+     932,
+     922
+    ],
+    "facing": "front"
+   }
+  ],
+  "heads": 0,
+  "writing": "",
+  "others": "",
+  "seconds": 13.9
+ },
+ "z-image-turbo-elara-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile left"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 15.9
+ },
+ "z-image-turbo-elara-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile left"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 15.6
+ },
+ "z-image-turbo-kael-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile right"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 15.7
+ },
+ "z-image-turbo-kael-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile left"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 15.6
+ },
+ "z-image-turbo-lantern-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "three-quarter right"
+   }
+  ],
+  "heads": 0,
+  "writing": "",
+  "others": "",
+  "seconds": 14.2
+ },
+ "z-image-turbo-lantern-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "front"
+   }
+  ],
+  "heads": 0,
+  "writing": "",
+  "others": "",
+  "seconds": 13.8
+ }
+}

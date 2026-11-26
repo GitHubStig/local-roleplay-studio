@@ -1,6 +1,6 @@
 # Reference sheets, stage 4: the face pass through the app (2026-11-26)
 
-The face pass of [reference-sheets-plans.md](../../../reference-sheets-plans.md) as built in stage 4 (`server/faces/`), run on real pictures: what it did, and the four things tried to fix what it did wrong. What was decided is in the plan's stage 4; this page keeps the pictures and the numbers, for the [showcase](../../../showcase/README.md).
+The face pass of [reference sheets](../../../research/people-in-pictures.md#reference-sheets-as-built-2026-11-26) as built in stage 4 (`server/faces/`), run on real pictures: what it did, and the four things tried to fix what it did wrong. What was decided is in [research](../../../research/people-in-pictures.md#4-the-face-pass-after-each-render-done-2026-11-26), stage 4; this page keeps the pictures and the numbers, for the [showcase](../../../showcase/README.md).
 
 Everything here is the public tavern Scenario (`example-scenarios/tavern.md`), made with `deno task replay server/replay/replays/tavern-sheets.yaml` (seed 7): the Cast, Kael's and Elara's sheets, the opening and one Message, each pictured. Rendered by the Session's Image Model, Krea 2 + LoRA, on the Windows PC's ComfyUI 0.46.3, sent from the Mac; the face pass by Qwen-Image 2.1 (int8) on the same ComfyUI, unless it says the Mac. Two Frames: Kael alone at the bar, his gaze lowered; and Kael in profile at the bar, looking at Elara, who faces him.
 

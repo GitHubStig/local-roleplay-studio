@@ -184,7 +184,7 @@ export async function editFrame<S extends Session>(
   } finally {
     release()
   }
-  // Then its face pass, in a Session with sheets, as a render's (docs/reference-sheets-plans.md,
+  // Then its face pass, in a Session with sheets, as a render's (ADR 0045,
   // stage 5): never one edit with both instructions, as a sheet passed into an edit that redraws a
   // person pulls their expression and pose to the sheet's. Only the heads its painted area touches,
   // told to keep what the edit changed (a smile, a cap, a cut), which the pass painted out when told

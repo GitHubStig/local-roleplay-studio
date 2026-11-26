@@ -1,5 +1,5 @@
 /**
- * Stage 5's bench (docs/reference-sheets-plans.md): the app's face pass (`twoPasses`) on edits of a
+ * Stage 5's bench (ADR 0045): the app's face pass (`twoPasses`) on edits of a
  * face, on a ComfyUI, told three ways. Each picture given is copied into `out`, then face-passed at
  * each seed, as stage 4's `seeds.ts` does, with the face's instruction as the variant says:
  *

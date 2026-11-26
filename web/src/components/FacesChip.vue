@@ -8,7 +8,7 @@ import PopMenu from './PopMenu.vue'
 
 /**
  * "Faces from sheets" on a picture whose faces were repainted from their reference sheets
- * (docs/reference-sheets-plans.md), as Edited is on an edited one. Clicking it says whose faces
+ * (ADR 0045), as Edited is on an edited one. Clicking it says whose faces
  * were repainted, with Without the face pass, which uses the picture before for that Frame; the
  * chip then offers the faces back. Holding it (a long press on a touch screen, as a long press on
  * the picture opens its menu) shows the other version while held (`peek`). For the version the

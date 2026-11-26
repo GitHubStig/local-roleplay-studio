@@ -1,0 +1,170 @@
+{
+ "anima-turbo-elara-1.png": {
+  "reply": "[{\"label\": \"Elara\", \"bbox_2d\": [66, 71, 287, 625], \"facing\": \"front\"}, {\"label\": \"Elara\", \"bbox_2d\": [337, 71, 557, 625], \"facing\": \"front\"}, {\"label\": \"Elara\", \"bbox_2d\": [666, 71, 900, 625], \"facing\": \"profile right\"}]",
+  "seconds": 6.6
+ },
+ "anima-turbo-elara-2.png": {
+  "reply": "[{\"label\": \"Elara\", \"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"label\": \"Elara\", \"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"label\": \"Elara\", \"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile right\"}]",
+  "seconds": 6.4
+ },
+ "anima-turbo-kael-1.png": {
+  "reply": "[{\"label\": \"Kael\", \"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"label\": \"Kael\", \"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"label\": \"Kael\", \"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile right\"}]",
+  "seconds": 6.3
+ },
+ "anima-turbo-kael-2.png": {
+  "reply": "[{\"label\": \"Kael\", \"bbox_2d\": [37, 50, 300, 750], \"facing\": \"three-quarter left\"}, {\"label\": \"Kael\", \"bbox_2d\": [275, 30, 675, 750], \"facing\": \"front\"}, {\"label\": \"Kael\", \"bbox_2d\": [675, 30, 965, 750], \"facing\": \"three-quarter right\"}]",
+  "seconds": 6.3
+ },
+ "anima-turbo-lantern-1.png": {
+  "reply": "[{\"label\": \"The Lantern of Vael\", \"bbox_2d\": [300, 0, 550, 999], \"facing\": \"front\"}]",
+  "seconds": 5.4
+ },
+ "anima-turbo-lantern-2.png": {
+  "reply": "[{\"label\":\"The Lantern of Vael\",\"bbox_2d\":[0, 0, 333, 1000],\"facing\":\"front\"}]",
+  "seconds": 4.9
+ },
+ "fibo-2.0-turbo-elara-1.png": {
+  "reply": "[{\"label\": \"Elara\", \"bbox_2d\": [70, 50, 250, 512], \"facing\": \"front\"}, {\"label\": \"Elara\", \"bbox_2d\": [398, 50, 598, 512], \"facing\": \"three-quarter left\"}, {\"label\": \"Elara\", \"bbox_2d\": [700, 50, 938, 512], \"facing\": \"profile right\"}]",
+  "seconds": 6.2
+ },
+ "fibo-2.0-turbo-elara-2.png": {
+  "reply": "[{\"label\": \"Elara\", \"bbox_2d\": [70, 71, 248, 538], \"facing\": \"front\"}, {\"label\": \"Elara\", \"bbox_2d\": [387, 55, 607, 538], \"facing\": \"three-quarter left\"}, {\"label\": \"Elara\", \"bbox_2d\": [712, 55, 956, 538], \"facing\": \"profile right\"}]",
+  "seconds": 6.3
+ },
+ "fibo-2.0-turbo-kael-1.png": {
+  "reply": "[{\"label\": \"Kael, a 42-year-old man with a lean build, slightly weathered skin, and piercing tired eyes with grey at the temples.\", \"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"label\": \"Kael, a 42-year-old man with a lean build, slightly weathered skin, and piercing tired eyes with grey at the temples.\", \"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"label\": \"Kael, a 42-year-old man with a lean build, slightly weathered skin, and piercing tired eyes with grey at the temples.\", \"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile right\"}]",
+  "seconds": 7.8
+ },
+ "fibo-2.0-turbo-kael-2.png": {
+  "reply": "[{\"label\": \"Kael\", \"bbox_2d\": [67, 62, 298, 527], \"facing\": \"front\"}, {\"label\": \"Kael\", \"bbox_2d\": [387, 57, 657, 527], \"facing\": \"three-quarter left\"}, {\"label\": \"Kael\", \"bbox_2d\": [710, 57, 987, 527], \"facing\": \"profile right\"}]",
+  "seconds": 6.4
+ },
+ "fibo-2.0-turbo-lantern-1.png": {
+  "reply": "[{\"label\": \"The Lantern of Vael, an ornate brass lantern with a domed cap, a ring handle, and panes of green glass etched with spiralling vines.\", \"bbox_2d\": [64, 47, 262, 888], \"facing\": \"three-quarter left\"}, {\"label\": \"The Lantern of Vael, an ornate brass lantern with a domed cap, a ring handle, and panes of green glass etched with spiralling vines.\", \"bbox_2d\": [402, 47, 598, 888], \"facing\": \"front\"}, {\"label\": \"The Lantern of Vael, an ornate brass lantern with a domed cap, a ring handle, and panes of green glass etched with spiralling vines.\", \"bbox_2d\": [744, 47, 940, 888], \"facing\": \"three-quarter right\"}]",
+  "seconds": 8
+ },
+ "fibo-2.0-turbo-lantern-2.png": {
+  "reply": "[{\"label\": \"The Lantern of Vael, an ornate brass lantern with a domed cap, a ring handle, and panes of green glass etched with spiralling vines.\", \"bbox_2d\": [54, 37, 262, 907], \"facing\": \"three-quarter left\"}, {\"label\": \"The Lantern of Vael, an ornate brass lantern with a domed cap, a ring handle, and panes of green glass etched with spiralling vines.\", \"bbox_2d\": [394, 37, 602, 907], \"facing\": \"front\"}, {\"label\": \"The Lantern of Vael, an ornate brass lantern with a domed cap, a ring handle, and panes of green glass etched with spiralling vines.\", \"bbox_2d\": [726, 37, 934, 907], \"facing\": \"three-quarter right\"}]",
+  "seconds": 8.1
+ },
+ "flux3-klein-elara-1.png": {
+  "reply": "[{\"label\": \"Elara\", \"bbox_2d\": [0, 37, 333, 1000], \"facing\": \"front\"}, {\"label\": \"Elara\", \"bbox_2d\": [333, 37, 666, 1000], \"facing\": \"three-quarter left\"}, {\"label\": \"Elara\", \"bbox_2d\": [666, 37, 1000, 1000], \"facing\": \"profile right\"}]",
+  "seconds": 6.3
+ },
+ "flux3-klein-elara-2.png": {
+  "reply": "[{\"label\": \"Elara\", \"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"label\": \"Elara\", \"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"label\": \"Elara\", \"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile right\"}]",
+  "seconds": 6.4
+ },
+ "flux3-klein-kael-1.png": {
+  "reply": "[{\"label\": \"Kael\", \"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"label\": \"Kael\", \"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"label\": \"Kael\", \"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile right\"}]",
+  "seconds": 6.8
+ },
+ "flux3-klein-kael-2.png": {
+  "reply": "[{\"label\": \"Kael\", \"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"label\": \"Kael\", \"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"label\": \"Kael\", \"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile right\"}]",
+  "seconds": 6.8
+ },
+ "flux3-klein-lantern-1.png": {
+  "reply": "[{\"label\": \"The Lantern of Vael\", \"bbox_2d\": [74, 37, 256, 962], \"facing\": \"front\"}, {\"label\": \"The Lantern of Vael\", \"bbox_2d\": [407, 37, 589, 962], \"facing\": \"front\"}, {\"label\": \"The Lantern of Vael\", \"bbox_2d\": [739, 37, 921, 962], \"facing\": \"front\"}]",
+  "seconds": 6.5
+ },
+ "flux3-klein-lantern-2.png": {
+  "reply": "[{\"label\": \"The Lantern of Vael\", \"bbox_2d\": [64, 27, 264, 967], \"facing\": \"front\"}, {\"label\": \"The Lantern of Vael\", \"bbox_2d\": [392, 27, 592, 967], \"facing\": \"front\"}, {\"label\": \"The Lantern of Vael\", \"bbox_2d\": [720, 27, 920, 967], \"facing\": \"front\"}]",
+  "seconds": 6.4
+ },
+ "krea-2-lora-elara-1.png": {
+  "reply": "[{\"label\": \"Elara\", \"bbox_2d\": [1, 37, 383, 997], \"facing\": \"front\"}]",
+  "seconds": 4.9
+ },
+ "krea-2-lora-elara-2.png": {
+  "reply": "[{\"label\": \"Elara\", \"bbox_2d\": [1, 37, 375, 997], \"facing\": \"front\"}]",
+  "seconds": 4.9
+ },
+ "krea-2-lora-kael-1.png": {
+  "reply": "[{\"label\": \"Kael\", \"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}]",
+  "seconds": 4.7
+ },
+ "krea-2-lora-kael-2.png": {
+  "reply": "[{\"label\": \"Kael\", \"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}]",
+  "seconds": 6.3
+ },
+ "krea-2-lora-lantern-1.png": {
+  "reply": "[{\"label\": \"The Lantern of Vael\", \"bbox_2d\": [72, 44, 270, 925], \"facing\": \"front\"}]",
+  "seconds": 4.8
+ },
+ "krea-2-lora-lantern-2.png": {
+  "reply": "[{\"label\": \"The Lantern of Vael\", \"bbox_2d\": [72, 44, 272, 944], \"facing\": \"front\"}]",
+  "seconds": 4.7
+ },
+ "qwen-image-2.1-elara-1.png": {
+  "reply": "[{\"label\": \"Elara\", \"bbox_2d\": [57, 31, 307, 687], \"facing\": \"front\"}, {\"label\": \"Elara\", \"bbox_2d\": [357, 31, 607, 687], \"facing\": \"three-quarter left\"}, {\"label\": \"Elara\", \"bbox_2d\": [657, 31, 907, 687], \"facing\": \"profile right\"}]",
+  "seconds": 6.6
+ },
+ "qwen-image-2.1-elara-2.png": {
+  "reply": "[{\"label\": \"Elara\", \"bbox_2d\": [68, 19, 320, 550], \"facing\": \"front\"}, {\"label\": \"Elara\", \"bbox_2d\": [370, 19, 620, 550], \"facing\": \"three-quarter left\"}, {\"label\": \"Elara\", \"bbox_2d\": [680, 19, 930, 550], \"facing\": \"profile right\"}]",
+  "seconds": 6.5
+ },
+ "qwen-image-2.1-kael-1.png": {
+  "reply": "[{\"label\": \"Kael\", \"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"label\": \"Kael\", \"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"label\": \"Kael\", \"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile right\"}]",
+  "seconds": 6.2
+ },
+ "qwen-image-2.1-kael-2.png": {
+  "reply": "[{\"label\": \"Kael\", \"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"label\": \"Kael\", \"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"label\": \"Kael\", \"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile right\"}]",
+  "seconds": 6.2
+ },
+ "qwen-image-2.1-lantern-1.png": {
+  "reply": "[{\"label\": \"The Lantern of Vael\", \"bbox_2d\": [93, 19, 267, 967], \"facing\": \"front\"}, {\"label\": \"The Lantern of Vael\", \"bbox_2d\": [413, 19, 587, 967], \"facing\": \"front\"}, {\"label\": \"The Lantern of Vael\", \"bbox_2d\": [733, 19, 907, 967], \"facing\": \"front\"}]",
+  "seconds": 6.3
+ },
+ "qwen-image-2.1-lantern-2.png": {
+  "reply": "[{\"label\": \"The Lantern of Vael\", \"bbox_2d\": [73, 27, 266, 927], \"facing\": \"front\"}, {\"label\": \"The Lantern of Vael\", \"bbox_2d\": [407, 27, 599, 927], \"facing\": \"front\"}, {\"label\": \"The Lantern of Vael\", \"bbox_2d\": [730, 27, 923, 927], \"facing\": \"front\"}]",
+  "seconds": 6.3
+ },
+ "qwen-image-2.1-turbo-elara-1.png": {
+  "reply": "[{\"label\": \"Elara\", \"bbox_2d\": [17, 37, 325, 783], \"facing\": \"front\"}, {\"label\": \"Elara\", \"bbox_2d\": [350, 37, 667, 783], \"facing\": \"three-quarter left\"}, {\"label\": \"Elara\", \"bbox_2d\": [675, 37, 1000, 783], \"facing\": \"profile right\"}]",
+  "seconds": 6.7
+ },
+ "qwen-image-2.1-turbo-elara-2.png": {
+  "reply": "[{\"label\": \"Elara\", \"bbox_2d\": [70, 27, 275, 527], \"facing\": \"front\"}, {\"label\": \"Elara\", \"bbox_2d\": [385, 27, 600, 527], \"facing\": \"three-quarter left\"}, {\"label\": \"Elara\", \"bbox_2d\": [690, 27, 905, 527], \"facing\": \"profile right\"}]",
+  "seconds": 6.4
+ },
+ "qwen-image-2.1-turbo-kael-1.png": {
+  "reply": "[{\"label\": \"Kael\", \"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"label\": \"Kael\", \"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"label\": \"Kael\", \"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile left\"}]",
+  "seconds": 6.5
+ },
+ "qwen-image-2.1-turbo-kael-2.png": {
+  "reply": "[{\"label\": \"Kael\", \"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"label\": \"Kael\", \"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"label\": \"Kael\", \"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile left\"}]",
+  "seconds": 6.7
+ },
+ "qwen-image-2.1-turbo-lantern-1.png": {
+  "reply": "[{\"label\": \"The Lantern of Vael\", \"bbox_2d\": [84, 21, 270, 957], \"facing\": \"front\"}, {\"label\": \"The Lantern of Vael\", \"bbox_2d\": [416, 21, 602, 957], \"facing\": \"front\"}, {\"label\": \"The Lantern of Vael\", \"bbox_2d\": [720, 21, 906, 957], \"facing\": \"front\"}]",
+  "seconds": 6.3
+ },
+ "qwen-image-2.1-turbo-lantern-2.png": {
+  "reply": "[{\"label\": \"The Lantern of Vael\", \"bbox_2d\": [83, 27, 263, 912], \"facing\": \"front\"}, {\"label\": \"The Lantern of Vael\", \"bbox_2d\": [413, 27, 593, 912], \"facing\": \"front\"}, {\"label\": \"The Lantern of Vael\", \"bbox_2d\": [733, 27, 913, 912], \"facing\": \"front\"}]",
+  "seconds": 6.4
+ },
+ "z-image-turbo-elara-1.png": {
+  "reply": "[{\"label\": \"Elara\", \"bbox_2d\": [34, 73, 292, 638], \"facing\": \"front\"}, {\"label\": \"Elara\", \"bbox_2d\": [357, 73, 615, 638], \"facing\": \"three-quarter left\"}, {\"label\": \"Elara\", \"bbox_2d\": [687, 73, 945, 638], \"facing\": \"profile right\"}]",
+  "seconds": 6.4
+ },
+ "z-image-turbo-elara-2.png": {
+  "reply": "[{\"label\": \"Elara\", \"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"label\": \"Elara\", \"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"label\": \"Elara\", \"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile right\"}]",
+  "seconds": 6.4
+ },
+ "z-image-turbo-kael-1.png": {
+  "reply": "[{\"label\": \"Kael\", \"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"label\": \"Kael\", \"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"label\": \"Kael\", \"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile left\"}]",
+  "seconds": 6.3
+ },
+ "z-image-turbo-kael-2.png": {
+  "reply": "[{\"label\": \"Kael\", \"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"label\": \"Kael\", \"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"label\": \"Kael\", \"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile left\"}]",
+  "seconds": 6.6
+ },
+ "z-image-turbo-lantern-1.png": {
+  "reply": "[{\"label\": \"The Lantern of Vael\", \"bbox_2d\": [73, 27, 250, 967], \"facing\": \"front\"}, {\"label\": \"The Lantern of Vael\", \"bbox_2d\": [400, 27, 577, 967], \"facing\": \"front\"}, {\"label\": \"The Lantern of Vael\", \"bbox_2d\": [727, 27, 904, 967], \"facing\": \"front\"}]",
+  "seconds": 6.5
+ },
+ "z-image-turbo-lantern-2.png": {
+  "reply": "[{\"label\": \"The Lantern of Vael, an ornate brass lantern with a domed cap, a ring handle, and panes of green glass etched with spiralling vines.\", \"bbox_2d\": [73, 31, 260, 967], \"facing\": \"front\"}]",
+  "seconds": 5.3
+ }
+}

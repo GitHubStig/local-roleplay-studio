@@ -1,0 +1,170 @@
+{
+ "anima-turbo-elara-1.png": {
+  "reply": "[{\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"front\"}, {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile right\"}]",
+  "seconds": 5.9
+ },
+ "anima-turbo-elara-2.png": {
+  "reply": "[{\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile left\"}]",
+  "seconds": 5.9
+ },
+ "anima-turbo-kael-1.png": {
+  "reply": "[\n    {\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"},\n    {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"},\n    {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile right\"}\n]",
+  "seconds": 7.8
+ },
+ "anima-turbo-kael-2.png": {
+  "reply": "[\n    {\"bbox_2d\": [0, 50, 292, 997], \"facing\": \"three-quarter left\"},\n    {\"bbox_2d\": [275, 33, 725, 997], \"facing\": \"front\"},\n    {\"bbox_2d\": [700, 50, 1000, 997], \"facing\": \"three-quarter right\"}\n]",
+  "seconds": 5.9
+ },
+ "anima-turbo-lantern-1.png": {
+  "reply": "[\n    {\"bbox_2d\": [58, 27, 242, 967], \"facing\": \"front\"},\n    {\"bbox_2d\": [288, 0, 538, 997], \"facing\": \"front\"},\n    {\"bbox_2d\": [570, 27, 764, 967], \"facing\": \"front\"},\n    {\"bbox_2d\": [788, 27, 982, 967], \"facing\": \"front\"}\n]",
+  "seconds": 6.6
+ },
+ "anima-turbo-lantern-2.png": {
+  "reply": "[\n    {\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"},\n    {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"front\"},\n    {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"front\"}\n]",
+  "seconds": 5.9
+ },
+ "fibo-2.0-turbo-elara-1.png": {
+  "reply": "[\n    {\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"},\n    {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"},\n    {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile left\"}\n]",
+  "seconds": 6.2
+ },
+ "fibo-2.0-turbo-elara-2.png": {
+  "reply": "[\n    {\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"},\n    {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"},\n    {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile left\"}\n]",
+  "seconds": 6
+ },
+ "fibo-2.0-turbo-kael-1.png": {
+  "reply": "[\n    {\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"},\n    {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"},\n    {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile left\"}\n]",
+  "seconds": 6.1
+ },
+ "fibo-2.0-turbo-kael-2.png": {
+  "reply": "[\n    {\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"},\n    {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"},\n    {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile left\"}\n]",
+  "seconds": 6.1
+ },
+ "fibo-2.0-turbo-lantern-1.png": {
+  "reply": "[{\"bbox_2d\": [64, 44, 264, 894], \"facing\": \"three-quarter left\"}, {\"bbox_2d\": [396, 44, 596, 894], \"facing\": \"front\"}, {\"bbox_2d\": [738, 44, 938, 894], \"facing\": \"three-quarter right\"}]",
+  "seconds": 6.1
+ },
+ "fibo-2.0-turbo-lantern-2.png": {
+  "reply": "[\n    {\"bbox_2d\": [53, 37, 262, 907], \"facing\": \"three-quarter left\"},\n    {\"bbox_2d\": [392, 37, 601, 907], \"facing\": \"front\"},\n    {\"bbox_2d\": [722, 37, 931, 907], \"facing\": \"three-quarter right\"}\n]",
+  "seconds": 6.1
+ },
+ "flux3-klein-elara-1.png": {
+  "reply": "[\n    {\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"},\n    {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"},\n    {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile right\"}\n]",
+  "seconds": 6.6
+ },
+ "flux3-klein-elara-2.png": {
+  "reply": "[{\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile right\"}]",
+  "seconds": 6.3
+ },
+ "flux3-klein-kael-1.png": {
+  "reply": "[\n    {\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"},\n    {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"},\n    {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile right\"}\n]",
+  "seconds": 6.1
+ },
+ "flux3-klein-kael-2.png": {
+  "reply": "[\n    {\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"},\n    {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"},\n    {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile right\"}\n]",
+  "seconds": 6.1
+ },
+ "flux3-klein-lantern-1.png": {
+  "reply": "[\n    {\"bbox_2d\": [75, 37, 258, 962], \"facing\": \"front\"},\n    {\"bbox_2d\": [407, 37, 590, 962], \"facing\": \"front\"},\n    {\"bbox_2d\": [739, 37, 922, 962], \"facing\": \"front\"}\n]",
+  "seconds": 6.1
+ },
+ "flux3-klein-lantern-2.png": {
+  "reply": "[\n    {\"bbox_2d\": [60, 27, 260, 967], \"facing\": \"three-quarter left\"},\n    {\"bbox_2d\": [380, 27, 580, 967], \"facing\": \"front\"},\n    {\"bbox_2d\": [700, 27, 900, 967], \"facing\": \"three-quarter right\"}\n]",
+  "seconds": 6.5
+ },
+ "krea-2-lora-elara-1.png": {
+  "reply": "[{\"bbox_2d\": [0, 33, 387, 997], \"facing\": \"front\"}, {\"bbox_2d\": [377, 33, 699, 997], \"facing\": \"three-quarter left\"}, {\"bbox_2d\": [689, 33, 1000, 997], \"facing\": \"profile right\"}]",
+  "seconds": 6
+ },
+ "krea-2-lora-elara-2.png": {
+  "reply": "[{\"bbox_2d\": [0, 33, 383, 997], \"facing\": \"front\"}, {\"bbox_2d\": [383, 33, 700, 997], \"facing\": \"three-quarter left\"}, {\"bbox_2d\": [700, 33, 1000, 997], \"facing\": \"profile right\"}]",
+  "seconds": 6
+ },
+ "krea-2-lora-kael-1.png": {
+  "reply": "[{\"bbox_2d\": [0, 0, 383, 1000], \"facing\": \"front\"}, {\"bbox_2d\": [350, 0, 725, 1000], \"facing\": \"three-quarter left\"}, {\"bbox_2d\": [680, 0, 1000, 1000], \"facing\": \"profile right\"}]",
+  "seconds": 5.9
+ },
+ "krea-2-lora-kael-2.png": {
+  "reply": "[{\"bbox_2d\": [0, 0, 375, 1000], \"facing\": \"front\"}, {\"bbox_2d\": [350, 0, 725, 1000], \"facing\": \"three-quarter left\"}, {\"bbox_2d\": [700, 0, 1000, 1000], \"facing\": \"profile right\"}]",
+  "seconds": 6.1
+ },
+ "krea-2-lora-lantern-1.png": {
+  "reply": "[{\"bbox_2d\": [72, 44, 272, 928], \"facing\": \"front\"}, {\"bbox_2d\": [392, 44, 592, 928], \"facing\": \"front\"}, {\"bbox_2d\": [712, 44, 912, 928], \"facing\": \"front\"}]",
+  "seconds": 6.1
+ },
+ "krea-2-lora-lantern-2.png": {
+  "reply": "[\n    {\"bbox_2d\": [73, 44, 273, 944], \"facing\": \"front\"},\n    {\"bbox_2d\": [393, 44, 593, 944], \"facing\": \"front\"},\n    {\"bbox_2d\": [713, 44, 913, 944], \"facing\": \"front\"}\n]",
+  "seconds": 5.8
+ },
+ "qwen-image-2.1-elara-1.png": {
+  "reply": "[{\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile left\"}]",
+  "seconds": 6.1
+ },
+ "qwen-image-2.1-elara-2.png": {
+  "reply": "[{\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile left\"}]",
+  "seconds": 5.9
+ },
+ "qwen-image-2.1-kael-1.png": {
+  "reply": "[\n    {\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"},\n    {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"},\n    {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile right\"}\n]",
+  "seconds": 5.9
+ },
+ "qwen-image-2.1-kael-2.png": {
+  "reply": "[\n    {\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"},\n    {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"},\n    {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile left\"}\n]",
+  "seconds": 5.8
+ },
+ "qwen-image-2.1-lantern-1.png": {
+  "reply": "[\n    {\"bbox_2d\": [85, 19, 270, 967], \"facing\": \"three-quarter left\"},\n    {\"bbox_2d\": [405, 19, 590, 967], \"facing\": \"front\"},\n    {\"bbox_2d\": [725, 19, 910, 967], \"facing\": \"three-quarter right\"}\n]",
+  "seconds": 6
+ },
+ "qwen-image-2.1-lantern-2.png": {
+  "reply": "[\n    {\"bbox_2d\": [70, 27, 268, 927], \"facing\": \"three-quarter left\"},\n    {\"bbox_2d\": [398, 27, 596, 927], \"facing\": \"front\"},\n    {\"bbox_2d\": [726, 27, 924, 927], \"facing\": \"three-quarter right\"}\n]",
+  "seconds": 6.2
+ },
+ "qwen-image-2.1-turbo-elara-1.png": {
+  "reply": "[{\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile left\"}]",
+  "seconds": 6.1
+ },
+ "qwen-image-2.1-turbo-elara-2.png": {
+  "reply": "[{\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile left\"}]",
+  "seconds": 5.8
+ },
+ "qwen-image-2.1-turbo-kael-1.png": {
+  "reply": "[{\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile left\"}]",
+  "seconds": 5.8
+ },
+ "qwen-image-2.1-turbo-kael-2.png": {
+  "reply": "[\n    {\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"},\n    {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"},\n    {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile left\"}\n]",
+  "seconds": 5.8
+ },
+ "qwen-image-2.1-turbo-lantern-1.png": {
+  "reply": "[\n    {\"bbox_2d\": [85, 19, 270, 960], \"facing\": \"front\"},\n    {\"bbox_2d\": [415, 19, 600, 960], \"facing\": \"front\"},\n    {\"bbox_2d\": [725, 19, 910, 960], \"facing\": \"front\"}\n]",
+  "seconds": 5.8
+ },
+ "qwen-image-2.1-turbo-lantern-2.png": {
+  "reply": "[\n    {\"bbox_2d\": [77, 22, 267, 922], \"facing\": \"front\"},\n    {\"bbox_2d\": [410, 22, 599, 922], \"facing\": \"front\"},\n    {\"bbox_2d\": [742, 22, 932, 922], \"facing\": \"front\"}\n]",
+  "seconds": 5.8
+ },
+ "z-image-turbo-elara-1.png": {
+  "reply": "[\n    {\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"},\n    {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"},\n    {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile left\"}\n]",
+  "seconds": 5.8
+ },
+ "z-image-turbo-elara-2.png": {
+  "reply": "[\n    {\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"},\n    {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"},\n    {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile left\"}\n]",
+  "seconds": 6
+ },
+ "z-image-turbo-kael-1.png": {
+  "reply": "[{\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile right\"}]",
+  "seconds": 5.9
+ },
+ "z-image-turbo-kael-2.png": {
+  "reply": "[{\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"}, {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"three-quarter left\"}, {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"profile left\"}]",
+  "seconds": 5.8
+ },
+ "z-image-turbo-lantern-1.png": {
+  "reply": "[\n    {\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"three-quarter left\"},\n    {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"front\"},\n    {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"three-quarter right\"}\n]",
+  "seconds": 5.9
+ },
+ "z-image-turbo-lantern-2.png": {
+  "reply": "[\n    {\"bbox_2d\": [0, 0, 333, 1000], \"facing\": \"front\"},\n    {\"bbox_2d\": [333, 0, 666, 1000], \"facing\": \"front\"},\n    {\"bbox_2d\": [666, 0, 1000, 1000], \"facing\": \"front\"}\n]",
+  "seconds": 5.8
+ }
+}

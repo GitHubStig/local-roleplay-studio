@@ -1,0 +1,170 @@
+{
+ "anima-turbo-elara-1.png": {
+  "reply": "{\n  \"backdrop\": \"dark, plain\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 4.5
+ },
+ "anima-turbo-elara-2.png": {
+  "reply": "{\n  \"backdrop\": \"dark, plain\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 4.3
+ },
+ "anima-turbo-kael-1.png": {
+  "reply": "{\"backdrop\": \"dark grey, plain\", \"writing\": \"\", \"others\": \"\"}",
+  "seconds": 5
+ },
+ "anima-turbo-kael-2.png": {
+  "reply": "{\"backdrop\": \"dark grey, plain\", \"writing\": \"\", \"others\": \"\"}",
+  "seconds": 4.3
+ },
+ "anima-turbo-lantern-1.png": {
+  "reply": "{\"backdrop\": \"dark grey, textured, not plain\", \"writing\": \"\", \"others\": \"\"}",
+  "seconds": 4.3
+ },
+ "anima-turbo-lantern-2.png": {
+  "reply": "{\n  \"backdrop\": {\n    \"colour\": \"dark grey\",\n    \"plain\": true\n  },\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 4.5
+ },
+ "fibo-2.0-turbo-elara-1.png": {
+  "reply": "{\n  \"backdrop\": \"plain, dark grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 4.3
+ },
+ "fibo-2.0-turbo-elara-2.png": {
+  "reply": "{\n  \"backdrop\": \"plain, dark grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 4.3
+ },
+ "fibo-2.0-turbo-kael-1.png": {
+  "reply": "{\n  \"backdrop\": \"plain, grey\",\n  \"writing\": \"Kael\",\n  \"others\": \"\"\n}",
+  "seconds": 4.6
+ },
+ "fibo-2.0-turbo-kael-2.png": {
+  "reply": "{\n  \"backdrop\": \"plain, dark grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 4.4
+ },
+ "fibo-2.0-turbo-lantern-1.png": {
+  "reply": "{\n  \"backdrop\": \"plain\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 5.6
+ },
+ "fibo-2.0-turbo-lantern-2.png": {
+  "reply": "{\n  \"backdrop\": \"plain, dark grey\",\n  \"writing\": \"Lantern of Vael\",\n  \"others\": \"\"\n}",
+  "seconds": 4.5
+ },
+ "flux3-klein-elara-1.png": {
+  "reply": "{\n  \"backdrop\": \"plain, dark brown\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 4.3
+ },
+ "flux3-klein-elara-2.png": {
+  "reply": "{\"backdrop\": \"dark brown, plain\", \"writing\": \"\", \"others\": \"\"}",
+  "seconds": 4.3
+ },
+ "flux3-klein-kael-1.png": {
+  "reply": "{\"backdrop\": \"dark brown, plain\", \"writing\": \"\", \"others\": \"\"}",
+  "seconds": 4.3
+ },
+ "flux3-klein-kael-2.png": {
+  "reply": "{\"backdrop\": \"dark brown, plain\", \"writing\": \"\", \"others\": \"\"}",
+  "seconds": 4.4
+ },
+ "flux3-klein-lantern-1.png": {
+  "reply": "{\n  \"backdrop\": \"dark grey, plain\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 4.4
+ },
+ "flux3-klein-lantern-2.png": {
+  "reply": "{\n  \"backdrop\": \"dark grey, plain\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 4.3
+ },
+ "krea-2-lora-elara-1.png": {
+  "reply": "{\n  \"backdrop\": \"plain, dark grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 4.4
+ },
+ "krea-2-lora-elara-2.png": {
+  "reply": "{\n  \"backdrop\": \"plain, dark grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 4.3
+ },
+ "krea-2-lora-kael-1.png": {
+  "reply": "{\"backdrop\": \"dark grey, plain\", \"writing\": \"\", \"others\": \"\"}",
+  "seconds": 4.2
+ },
+ "krea-2-lora-kael-2.png": {
+  "reply": "{\"backdrop\": \"dark grey, plain\", \"writing\": \"\", \"others\": \"\"}",
+  "seconds": 4.3
+ },
+ "krea-2-lora-lantern-1.png": {
+  "reply": "{\"backdrop\": \"dark grey, plain\", \"writing\": \"\", \"others\": \"\"}",
+  "seconds": 4.2
+ },
+ "krea-2-lora-lantern-2.png": {
+  "reply": "{\"backdrop\": \"dark grey, plain\", \"writing\": \"\", \"others\": \"\"}",
+  "seconds": 4.3
+ },
+ "qwen-image-2.1-elara-1.png": {
+  "reply": "{\n  \"backdrop\": \"plain, dark grey\",\n  \"writing\": \"\",\n  \"others\": \"candle on a sconce\"\n}",
+  "seconds": 4.5
+ },
+ "qwen-image-2.1-elara-2.png": {
+  "reply": "{\n  \"backdrop\": \"plain, dark grey\",\n  \"writing\": \"\",\n  \"others\": \"a lit oil lamp on the wall\"\n}",
+  "seconds": 4.5
+ },
+ "qwen-image-2.1-kael-1.png": {
+  "reply": "{\"backdrop\": \"dark grey, plain\", \"writing\": \"\", \"others\": \"candle\"}",
+  "seconds": 4.3
+ },
+ "qwen-image-2.1-kael-2.png": {
+  "reply": "{\n  \"backdrop\": \"plain, dark grey\",\n  \"writing\": \"\",\n  \"others\": \"a lit oil lamp\"\n}",
+  "seconds": 4.5
+ },
+ "qwen-image-2.1-lantern-1.png": {
+  "reply": "{\"backdrop\": \"dark grey, plain\", \"writing\": \"\", \"others\": \"\"}",
+  "seconds": 4.3
+ },
+ "qwen-image-2.1-lantern-2.png": {
+  "reply": "{\n  \"backdrop\": \"dark grey, plain\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 4.6
+ },
+ "qwen-image-2.1-turbo-elara-1.png": {
+  "reply": "{\n  \"backdrop\": \"plain, grey\",\n  \"writing\": \"\",\n  \"others\": \"candle\"\n}",
+  "seconds": 4.4
+ },
+ "qwen-image-2.1-turbo-elara-2.png": {
+  "reply": "{\n  \"backdrop\": \"plain, dark gray\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 4.4
+ },
+ "qwen-image-2.1-turbo-kael-1.png": {
+  "reply": "{\"backdrop\": \"plain, grey\", \"writing\": \"\", \"others\": \"\"}",
+  "seconds": 4.6
+ },
+ "qwen-image-2.1-turbo-kael-2.png": {
+  "reply": "{\"backdrop\": \"plain, grey\", \"writing\": \"\", \"others\": \"\"}",
+  "seconds": 4.6
+ },
+ "qwen-image-2.1-turbo-lantern-1.png": {
+  "reply": "{\"backdrop\": \"dark grey, plain\", \"writing\": \"\", \"others\": \"\"}",
+  "seconds": 4.3
+ },
+ "qwen-image-2.1-turbo-lantern-2.png": {
+  "reply": "{\"backdrop\": \"dark grey, plain\", \"writing\": \"\", \"others\": \"\"}",
+  "seconds": 4.2
+ },
+ "z-image-turbo-elara-1.png": {
+  "reply": "{\n  \"backdrop\": \"plain, dark grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 4.4
+ },
+ "z-image-turbo-elara-2.png": {
+  "reply": "{\n  \"backdrop\": \"plain, dark grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 4.9
+ },
+ "z-image-turbo-kael-1.png": {
+  "reply": "{\"backdrop\": \"dark grey, plain\", \"writing\": \"\", \"others\": \"\"}",
+  "seconds": 4.6
+ },
+ "z-image-turbo-kael-2.png": {
+  "reply": "{\n  \"backdrop\": \"dark grey, plain\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 4.6
+ },
+ "z-image-turbo-lantern-1.png": {
+  "reply": "{\n  \"backdrop\": \"dark grey, plain\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 4.4
+ },
+ "z-image-turbo-lantern-2.png": {
+  "reply": "{\n  \"backdrop\": \"dark grey, plain\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 4.5
+ }
+}

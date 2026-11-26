@@ -1,7 +1,7 @@
 <!--
 Change…, on a reference sheet: the system message of the call that rewrites one Subject's
 identity in a Look with the player's note ("green eyes", "fewer scars"), so its sheet is made
-again from it and the two agree (docs/reference-sheets-plans.md). Under a schema of one field.
+again from it and the two agree (ADR 0045). Under a schema of one field.
 
 Values: identity (shared/identity.md), limits (sheets/change-limits.md, or '' with the Limits off)
 -->

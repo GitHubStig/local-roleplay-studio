@@ -1,6 +1,6 @@
 <!--
 The face pass's instruction to its edit model (Qwen-Image 2.1 Edit), one edit per Subject a
-picture shows with a reference sheet (`server/faces/`, docs/reference-sheets-plans.md), after a
+picture shows with a reference sheet (`server/faces/`, ADR 0045), after a
 render or after an edit of the whole picture (a camera move; an edit of a painted area is told
 `face-edited.md`): image 1 is the picture, its painted area that Subject's head (the box grown by a
 fifth, its edge softened), and image 2 the view of the Subject's sheet nearest the head's turn. The words

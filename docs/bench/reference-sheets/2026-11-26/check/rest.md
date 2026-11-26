@@ -1,0 +1,2 @@
+<!-- What find doesn't say: the backdrop, writing, anything else. -->
+This picture should be a turnaround sheet of {{who}} Look at it closely and answer with JSON only, one object: {"backdrop": the backdrop's colour, and whether it's plain, "writing": every letter, word or signature written anywhere in the picture, or "" if there's none, "others": anything else in the picture besides {{name}}, or "" if there's nothing else}. You're done only when "others" is written.

@@ -1,0 +1,42 @@
+anima-turbo-elara-1.png 16.4 s: 3 views (front, front, profile right), 3 heads, writing "", others "" → Its views aren't the front, a three-quarter turn and the profile, in that order (it read front, front, profile).
+anima-turbo-elara-2.png 15.5 s: 3 views (front, three-quarter left, profile left), 3 heads, writing "", others "" → fit
+anima-turbo-kael-1.png 15.5 s: 3 views (front, three-quarter left, profile right), 3 heads, writing "", others "" → fit
+anima-turbo-kael-2.png 15.5 s: 3 views (three-quarter left, front, three-quarter right), 3 heads, writing "", others "" → Its views aren't the front, a three-quarter turn and the profile, in that order (it read three-quarter, front, three-quarter).
+anima-turbo-lantern-1.png 14.3 s: 4 views (front, front, front, front), 0 heads, writing "", others "" → It shows the Lantern of Vael 4 times, not three times.
+anima-turbo-lantern-2.png 13.9 s: 3 views (front, front, front), 0 heads, writing "", others "" → fit
+fibo-2.0-turbo-elara-1.png 15.6 s: 3 views (front, three-quarter left, profile left), 3 heads, writing "", others "" → fit
+fibo-2.0-turbo-elara-2.png 15.6 s: 3 views (front, three-quarter left, profile left), 3 heads, writing "", others "" → fit
+fibo-2.0-turbo-kael-1.png 15.6 s: 3 views (front, three-quarter left, profile left), 3 heads, writing "Kael", others "" → It has writing on it: “Kael”.
+fibo-2.0-turbo-kael-2.png 15.5 s: 3 views (front, three-quarter left, profile left), 3 heads, writing "", others "" → fit
+fibo-2.0-turbo-lantern-1.png 13.9 s: 3 views (three-quarter left, front, three-quarter right), 0 heads, writing "", others "" → fit
+fibo-2.0-turbo-lantern-2.png 13.9 s: 3 views (three-quarter left, front, three-quarter right), 0 heads, writing "Lantern of Vael", others "" → It has writing on it: “Lantern of Vael”.
+flux3-klein-elara-1.png 15.7 s: 3 views (front, three-quarter left, profile right), 3 heads, writing "", others "" → fit
+flux3-klein-elara-2.png 15.6 s: 3 views (front, three-quarter left, profile right), 3 heads, writing "", others "" → fit
+flux3-klein-kael-1.png 17.1 s: 3 views (front, three-quarter left, profile right), 3 heads, writing "", others "" → fit
+flux3-klein-kael-2.png 15.4 s: 3 views (front, three-quarter left, profile right), 3 heads, writing "", others "" → fit
+flux3-klein-lantern-1.png 13.7 s: 3 views (front, front, front), 0 heads, writing "", others "" → fit
+flux3-klein-lantern-2.png 13.9 s: 3 views (three-quarter left, front, three-quarter right), 0 heads, writing "", others "" → fit
+krea-2-lora-elara-1.png 15.7 s: 3 views (front, three-quarter left, profile right), 3 heads, writing "", others "" → fit
+krea-2-lora-elara-2.png 15.5 s: 3 views (front, three-quarter left, profile right), 3 heads, writing "", others "" → fit
+krea-2-lora-kael-1.png 15.4 s: 3 views (front, three-quarter left, profile right), 3 heads, writing "", others "" → fit
+krea-2-lora-kael-2.png 15.6 s: 3 views (front, three-quarter left, profile right), 3 heads, writing "", others "" → fit
+krea-2-lora-lantern-1.png 13.6 s: 3 views (front, front, front), 0 heads, writing "", others "" → fit
+krea-2-lora-lantern-2.png 14.6 s: 3 views (front, front, front), 0 heads, writing "", others "" → fit
+qwen-image-2.1-elara-1.png 15.7 s: 3 views (front, three-quarter left, profile left), 3 heads, writing "", others "candle on a sconce" → fit
+qwen-image-2.1-elara-2.png 16 s: 3 views (front, three-quarter left, profile left), 3 heads, writing "", others "a lit oil lamp on the wall" → fit
+qwen-image-2.1-kael-1.png 15.6 s: 3 views (front, three-quarter left, profile right), 3 heads, writing "", others "candle" → fit
+qwen-image-2.1-kael-2.png 15.7 s: 3 views (front, three-quarter left, profile left), 3 heads, writing "", others "a lit oil lamp" → fit
+qwen-image-2.1-lantern-1.png 13.6 s: 3 views (three-quarter left, front, three-quarter right), 0 heads, writing "", others "" → fit
+qwen-image-2.1-lantern-2.png 14.1 s: 3 views (three-quarter left, front, three-quarter right), 0 heads, writing "", others "" → fit
+qwen-image-2.1-turbo-elara-1.png 15.8 s: 3 views (front, three-quarter left, profile left), 3 heads, writing "", others "candle" → fit
+qwen-image-2.1-turbo-elara-2.png 15.8 s: 3 views (front, three-quarter left, profile left), 3 heads, writing "", others "" → fit
+qwen-image-2.1-turbo-kael-1.png 15.3 s: 3 views (front, three-quarter left, profile left), 3 heads, writing "", others "" → fit
+qwen-image-2.1-turbo-kael-2.png 15.6 s: 3 views (front, three-quarter left, profile left), 3 heads, writing "", others "" → fit
+qwen-image-2.1-turbo-lantern-1.png 13.6 s: 3 views (front, front, front), 0 heads, writing "", others "" → fit
+qwen-image-2.1-turbo-lantern-2.png 13.9 s: 3 views (front, front, front), 0 heads, writing "", others "" → fit
+z-image-turbo-elara-1.png 15.9 s: 3 views (front, three-quarter left, profile left), 3 heads, writing "", others "" → fit
+z-image-turbo-elara-2.png 15.6 s: 3 views (front, three-quarter left, profile left), 3 heads, writing "", others "" → fit
+z-image-turbo-kael-1.png 15.7 s: 3 views (front, three-quarter left, profile right), 3 heads, writing "", others "" → fit
+z-image-turbo-kael-2.png 15.6 s: 3 views (front, three-quarter left, profile left), 3 heads, writing "", others "" → fit
+z-image-turbo-lantern-1.png 14.2 s: 3 views (three-quarter left, front, three-quarter right), 0 heads, writing "", others "" → fit
+z-image-turbo-lantern-2.png 13.8 s: 3 views (front, front, front), 0 heads, writing "", others "" → fit

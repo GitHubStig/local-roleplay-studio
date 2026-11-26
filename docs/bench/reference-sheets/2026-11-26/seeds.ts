@@ -1,5 +1,5 @@
 /**
- * Stage 4's face pass (docs/reference-sheets-plans.md) over more seeds, by the app's own code
+ * Stage 4's face pass (ADR 0045) over more seeds, by the app's own code
  * (`server/faces/facePass.ts`) on a ComfyUI: each render given is copied into `out`, then face-passed
  * at each seed, the instruction as `server/prompts/faces/` has it now. Prints each pass's timings,
  * whose faces, and whether the count asked for a redo.

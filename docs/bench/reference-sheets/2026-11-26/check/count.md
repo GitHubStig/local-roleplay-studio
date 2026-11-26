@@ -1,0 +1,1 @@
+Locate the head of every person or creature in the picture: the face and the hair only, not the neck, shoulders or body. Answer with JSON only: a list, one object per head, each {"label": who it is, "bbox_2d": [x1, y1, x2, y2]} in coordinates from 0 to 1000.

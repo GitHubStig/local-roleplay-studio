@@ -1,0 +1,397 @@
+{
+ "anima-turbo-kael-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     53,
+     300,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     280,
+     36,
+     717,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     699,
+     44,
+     1000,
+     1000
+    ],
+    "facing": "three-quarter right"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "flaw": "Its views aren't the front, a three-quarter turn and the profile, in that order (it read three-quarter, front, three-quarter).",
+  "seconds": 17.4
+ },
+ "anima-turbo-elara-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "three-quarter right"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "flaw": "Its views aren't the front, a three-quarter turn and the profile, in that order (it read front, front, three-quarter).",
+  "seconds": 15.8
+ },
+ "anima-turbo-lantern-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     58,
+     24,
+     245,
+     966
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     293,
+     0,
+     537,
+     997
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     573,
+     42,
+     750,
+     966
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     785,
+     62,
+     957,
+     966
+    ],
+    "facing": "front"
+   }
+  ],
+  "heads": 0,
+  "writing": "",
+  "others": "",
+  "flaw": "It shows the Lantern of Vael 4 times, not three times.",
+  "seconds": 19.2
+ },
+ "fibo-2.0-turbo-kael-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     53,
+     337,
+     991
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     337,
+     53,
+     663,
+     991
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     663,
+     53,
+     1000,
+     991
+    ],
+    "facing": "three-quarter right"
+   }
+  ],
+  "heads": 3,
+  "writing": "Käul",
+  "others": "",
+  "flaw": "Its views aren't the front, a three-quarter turn and the profile, in that order (it read front, three-quarter, three-quarter). It has writing on it: “Käul”.",
+  "seconds": 48.8
+ },
+ "fibo-2.0-turbo-lantern-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     55,
+     37,
+     262,
+     900
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     398,
+     37,
+     604,
+     900
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     727,
+     37,
+     934,
+     900
+    ],
+    "facing": "front"
+   }
+  ],
+  "heads": 0,
+  "writing": "Lantern of Vael",
+  "others": "",
+  "flaw": "It has writing on it: “Lantern of Vael”.",
+  "seconds": 15.4
+ },
+ "qwen-image-2.1-kael-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     26,
+     333,
+     991
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     26,
+     666,
+     991
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     26,
+     1000,
+     991
+    ],
+    "facing": "profile right"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "candle",
+  "seconds": 31.5
+ },
+ "krea-2-lora-elara-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     33,
+     387,
+     997
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     387,
+     33,
+     692,
+     997
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     708,
+     33,
+     1000,
+     997
+    ],
+    "facing": "profile right"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 43.1
+ },
+ "z-image-turbo-lantern-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     73,
+     22,
+     255,
+     958
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     407,
+     22,
+     589,
+     958
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     750,
+     22,
+     932,
+     958
+    ],
+    "facing": "front"
+   }
+  ],
+  "heads": 0,
+  "writing": "",
+  "others": "",
+  "seconds": 14.7
+ },
+ "flux3-klein-kael-2.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     0,
+     0,
+     333,
+     1000
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     333,
+     0,
+     666,
+     1000
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     666,
+     0,
+     1000,
+     1000
+    ],
+    "facing": "profile right"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 27.2
+ },
+ "fibo-2.0-turbo-elara-1.png": {
+  "views": [
+   {
+    "label": "",
+    "box": [
+     19,
+     48,
+     333,
+     990
+    ],
+    "facing": "front"
+   },
+   {
+    "label": "",
+    "box": [
+     398,
+     55,
+     657,
+     990
+    ],
+    "facing": "three-quarter left"
+   },
+   {
+    "label": "",
+    "box": [
+     732,
+     48,
+     988,
+     990
+    ],
+    "facing": "profile right"
+   }
+  ],
+  "heads": 3,
+  "writing": "",
+  "others": "",
+  "seconds": 50.9
+ }
+}

@@ -76,6 +76,14 @@ _Avoid_: Style guide, theme, bible
 One of a Look's: a person, creature, animal or object the story follows from picture to picture, with a name and an identity. A group that acts together and looks alike can be one.
 _Avoid_: Person (for one of a Look's), character, entity
 
+**Reference sheet**:
+One render of a Subject from the front, at a three-quarter turn and in profile, made from its identity in the Look's style before the story begins, for the face pass to repaint it from. A Storyboard or a Roleplay has them if started with them; each Subject's is ticked by default.
+_Avoid_: Portrait, character sheet, turnaround, model sheet
+
+**Face pass**:
+Repainting the faces of the Subjects a picture shows, one edit each, from the view of their reference sheet nearest the way each head is turned, after each render and each edit in a Session with sheets. What the picture was before it is kept beside it.
+_Avoid_: Face fix, face swap, detailer, inpaint
+
 **Cast**:
 Who a Roleplay is with and where it starts: the Character, the Persona and the Setting, written from its Brief. Once the scene has begun, only what steers the Character can change.
 _Avoid_: Character card, world, config

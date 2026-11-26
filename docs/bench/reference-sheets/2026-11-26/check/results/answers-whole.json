@@ -1,0 +1,170 @@
+{
+ "anima-turbo-elara-1.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\",\n      \"backdrop\": \"dark grey, textured, plain\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\",\n      \"backdrop\": \"dark grey, textured, plain\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile left\",\n      \"backdrop\": \"dark grey, textured, plain\",\n      \"writing\": \"\",\n      \"others\": \"a dark silhouette of another person's head and shoulder visible on the far right edge\"\n    }\n  ]\n}",
+  "seconds": 10.3
+ },
+ "anima-turbo-elara-2.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\",\n      \"backdrop\": \"dark, plain\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\",\n      \"backdrop\": \"dark, plain\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile left\",\n      \"backdrop\": \"dark, plain\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    }\n  ]\n}",
+  "seconds": 7.8
+ },
+ "anima-turbo-kael-1.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\",\n      \"backdrop\": \"plain dark grey\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\",\n      \"backdrop\": \"plain dark grey\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile right\",\n      \"backdrop\": \"plain dark grey\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    }\n  ]\n}",
+  "seconds": 7.6
+ },
+ "anima-turbo-kael-2.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"three-quarter left\",\n      \"backdrop\": \"dark grey, plain\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"front\",\n      \"backdrop\": \"dark grey, plain\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"three-quarter right\",\n      \"backdrop\": \"dark grey, plain\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    }\n  ],\n  \"backdrop\": \"dark grey, plain\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 8
+ },
+ "anima-turbo-lantern-1.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [50, 25, 250, 975],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [250, 25, 450, 975],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [450, 25, 650, 975],\n      \"facing\": \"three-quarter right\"\n    },\n    {\n      \"bbox_2d\": [650, 25, 850, 975],\n      \"facing\": \"profile right\"\n    }\n  ],\n  \"backdrop\": \"plain grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 7.5
+ },
+ "anima-turbo-lantern-2.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"three-quarter left\",\n      \"backdrop\": \"dark gray, textured, not plain\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"front\",\n      \"backdrop\": \"dark gray, textured, not plain\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"three-quarter right\",\n      \"backdrop\": \"dark gray, textured, not plain\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    }\n  ],\n  \"backdrop\": \"dark gray, textured, not plain\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 8.1
+ },
+ "fibo-2.0-turbo-elara-1.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile left\"\n    }\n  ],\n  \"backdrop\": \"plain dark grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 6.9
+ },
+ "fibo-2.0-turbo-elara-2.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile left\"\n    }\n  ],\n  \"backdrop\": \"plain dark grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 6.9
+ },
+ "fibo-2.0-turbo-kael-1.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile right\"\n    }\n  ],\n  \"backdrop\": \"plain grey\",\n  \"writing\": \"Kael,\",\n  \"others\": \"\"\n}",
+  "seconds": 6.8
+ },
+ "fibo-2.0-turbo-kael-2.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\",\n      \"backdrop\": \"plain dark grey\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\",\n      \"backdrop\": \"plain dark grey\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile left\",\n      \"backdrop\": \"plain dark grey\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    }\n  ],\n  \"backdrop\": \"plain dark grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 7.8
+ },
+ "fibo-2.0-turbo-lantern-1.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [65, 45, 265, 895],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [405, 45, 605, 895],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [745, 45, 945, 895],\n      \"facing\": \"three-quarter right\"\n    }\n  ],\n  \"backdrop\": \"plain grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 6.7
+ },
+ "fibo-2.0-turbo-lantern-2.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [53, 37, 263, 900],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [393, 37, 603, 900],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [723, 37, 933, 900],\n      \"facing\": \"three-quarter right\"\n    }\n  ],\n  \"backdrop\": \"plain grey\",\n  \"writing\": \"Lantern of Vael\",\n  \"others\": \"\"\n}",
+  "seconds": 6.9
+ },
+ "flux3-klein-elara-1.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\",\n      \"backdrop\": \"plain, dark brown\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\",\n      \"backdrop\": \"plain, dark brown\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile left\",\n      \"backdrop\": \"plain, dark brown\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    }\n  ]\n}",
+  "seconds": 7.5
+ },
+ "flux3-klein-elara-2.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile right\"\n    }\n  ],\n  \"backdrop\": \"plain, dark brown\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 6.7
+ },
+ "flux3-klein-kael-1.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile right\"\n    }\n  ],\n  \"backdrop\": \"dark brown, plain\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 7.1
+ },
+ "flux3-klein-kael-2.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile right\"\n    }\n  ],\n  \"backdrop\": \"dark brown, plain\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 8.1
+ },
+ "flux3-klein-lantern-1.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"three-quarter right\"\n    }\n  ],\n  \"backdrop\": \"dark brown, plain\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 6.8
+ },
+ "flux3-klein-lantern-2.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [60, 30, 260, 970],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [380, 30, 580, 970],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [700, 30, 900, 970],\n      \"facing\": \"three-quarter right\"\n    }\n  ],\n  \"backdrop\": \"dark grey, plain\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 6.9
+ },
+ "krea-2-lora-elara-1.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile right\"\n    }\n  ],\n  \"backdrop\": \"plain dark grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 6.8
+ },
+ "krea-2-lora-elara-2.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile right\"\n    }\n  ],\n  \"backdrop\": \"plain dark grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 6.7
+ },
+ "krea-2-lora-kael-1.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile right\"\n    }\n  ],\n  \"backdrop\": \"plain, dark grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 6.8
+ },
+ "krea-2-lora-kael-2.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile right\"\n    }\n  ],\n  \"backdrop\": \"plain, dark grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 7.1
+ },
+ "krea-2-lora-lantern-1.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [78, 48, 278, 930],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [395, 48, 600, 930],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [712, 48, 917, 930],\n      \"facing\": \"front\"\n    }\n  ],\n  \"backdrop\": \"dark grey, plain\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 8.1
+ },
+ "krea-2-lora-lantern-2.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [75, 42, 275, 958],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [385, 42, 585, 958],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [700, 42, 900, 958],\n      \"facing\": \"front\"\n    }\n  ],\n  \"backdrop\": \"plain dark grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 6.8
+ },
+ "qwen-image-2.1-elara-1.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\",\n      \"backdrop\": \"plain grey\",\n      \"writing\": \"\",\n      \"others\": \"candle\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\",\n      \"backdrop\": \"plain grey\",\n      \"writing\": \"\",\n      \"others\": \"candle\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile left\",\n      \"backdrop\": \"plain grey\",\n      \"writing\": \"\",\n      \"others\": \"candle\"\n    }\n  ],\n  \"others\": \"candle\"\n}",
+  "seconds": 7.9
+ },
+ "qwen-image-2.1-elara-2.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\",\n      \"backdrop\": \"plain dark grey\",\n      \"writing\": \"\",\n      \"others\": \"a lit oil lamp on the left wall\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\",\n      \"backdrop\": \"plain dark grey\",\n      \"writing\": \"\",\n      \"others\": \"a lit oil lamp on the left wall\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile left\",\n      \"backdrop\": \"plain dark grey\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    }\n  ]\n}",
+  "seconds": 7.7
+ },
+ "qwen-image-2.1-kael-1.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\",\n      \"backdrop\": \"plain dark grey\",\n      \"writing\": \"\",\n      \"others\": \"candle on a sconce\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\",\n      \"backdrop\": \"plain dark grey\",\n      \"writing\": \"\",\n      \"others\": \"candle on a sconce\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile right\",\n      \"backdrop\": \"plain dark grey\",\n      \"writing\": \"\",\n      \"others\": \"candle on a sconce\"\n    }\n  ]\n}",
+  "seconds": 7.9
+ },
+ "qwen-image-2.1-kael-2.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\",\n      \"backdrop\": \"plain dark grey\",\n      \"writing\": \"\",\n      \"others\": \"a lit oil lamp on the left side\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\",\n      \"backdrop\": \"plain dark grey\",\n      \"writing\": \"\",\n      \"others\": \"a lit oil lamp on the left side\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile left\",\n      \"backdrop\": \"plain dark grey\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    }\n  ]\n}",
+  "seconds": 8
+ },
+ "qwen-image-2.1-lantern-1.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [85, 17, 275, 967],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [405, 17, 595, 967],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [725, 17, 915, 967],\n      \"facing\": \"three-quarter right\"\n    }\n  ],\n  \"backdrop\": \"plain dark grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 7.1
+ },
+ "qwen-image-2.1-lantern-2.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [67, 27, 267, 927],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [387, 27, 587, 927],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [707, 27, 907, 927],\n      \"facing\": \"three-quarter right\"\n    }\n  ],\n  \"backdrop\": \"plain dark grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 6.8
+ },
+ "qwen-image-2.1-turbo-elara-1.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\",\n      \"backdrop\": \"plain grey\",\n      \"writing\": \"\",\n      \"others\": \"candle\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\",\n      \"backdrop\": \"plain grey\",\n      \"writing\": \"\",\n      \"others\": \"candle\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile left\",\n      \"backdrop\": \"plain grey\",\n      \"writing\": \"\",\n      \"others\": \"candle\"\n    }\n  ],\n  \"backdrop\": \"plain grey\",\n  \"writing\": \"\",\n  \"others\": \"candle\"\n}",
+  "seconds": 7.9
+ },
+ "qwen-image-2.1-turbo-elara-2.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\",\n      \"backdrop\": \"plain dark grey\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\",\n      \"backdrop\": \"plain dark grey\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile left\",\n      \"backdrop\": \"plain dark grey\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    }\n  ]\n}",
+  "seconds": 7.4
+ },
+ "qwen-image-2.1-turbo-kael-1.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile left\"\n    }\n  ],\n  \"backdrop\": \"plain grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 6.8
+ },
+ "qwen-image-2.1-turbo-kael-2.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile left\"\n    }\n  ],\n  \"backdrop\": \"plain grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 6.6
+ },
+ "qwen-image-2.1-turbo-lantern-1.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [85, 19, 275, 961],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [415, 19, 605, 961],\n      \"facing\": \"three-quarter right\"\n    },\n    {\n      \"bbox_2d\": [745, 19, 935, 961],\n      \"facing\": \"three-quarter left\"\n    }\n  ],\n  \"backdrop\": \"plain dark grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 6.8
+ },
+ "qwen-image-2.1-turbo-lantern-2.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [78, 22, 267, 920],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [410, 22, 599, 920],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [742, 22, 931, 920],\n      \"facing\": \"three-quarter right\"\n    }\n  ],\n  \"backdrop\": \"plain dark gray\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 7.1
+ },
+ "z-image-turbo-elara-1.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\",\n      \"backdrop\": \"plain dark grey\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\",\n      \"backdrop\": \"plain dark grey\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile left\",\n      \"backdrop\": \"plain dark grey\",\n      \"writing\": \"\",\n      \"others\": \"\"\n    }\n  ]\n}",
+  "seconds": 7.7
+ },
+ "z-image-turbo-elara-2.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile left\"\n    }\n  ],\n  \"backdrop\": \"plain dark grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 6.7
+ },
+ "z-image-turbo-kael-1.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile right\"\n    }\n  ],\n  \"backdrop\": \"plain dark grey\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 6.7
+ },
+ "z-image-turbo-kael-2.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"profile left\"\n    }\n  ],\n  \"backdrop\": \"dark grey, plain\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 6.7
+ },
+ "z-image-turbo-lantern-1.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [0, 0, 333, 1000],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [333, 0, 666, 1000],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [666, 0, 1000, 1000],\n      \"facing\": \"three-quarter right\"\n    }\n  ],\n  \"backdrop\": \"dark grey, plain\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 6.7
+ },
+ "z-image-turbo-lantern-2.png": {
+  "reply": "{\n  \"views\": [\n    {\n      \"bbox_2d\": [78, 31, 262, 967],\n      \"facing\": \"three-quarter left\"\n    },\n    {\n      \"bbox_2d\": [407, 31, 591, 967],\n      \"facing\": \"front\"\n    },\n    {\n      \"bbox_2d\": [734, 31, 918, 967],\n      \"facing\": \"three-quarter right\"\n    }\n  ],\n  \"backdrop\": \"dark grey, plain\",\n  \"writing\": \"\",\n  \"others\": \"\"\n}",
+  "seconds": 6.8
+ }
+}

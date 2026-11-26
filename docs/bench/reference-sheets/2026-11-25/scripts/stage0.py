@@ -1,4 +1,4 @@
-"""Reference sheets, stage 0 (docs/reference-sheets-plans.md): camera moves then the face pass, a
+"""Reference sheets, stage 0 (ADR 0045): camera moves then the face pass, a
 hard box against a softened one, and sheets for a creature and an object. Qwen-Image 2.1 on a
 ComfyUI across the network; pictures come back as PreviewImage, so nothing is left in its output
 folder. Usage: python3 -I stage0.py <comfy address> <repo> <out dir>"""

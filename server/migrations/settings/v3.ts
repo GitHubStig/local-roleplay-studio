@@ -1,5 +1,5 @@
 /**
- * `settings.json` at version 3 (2026-11-25): reference sheets (docs/reference-sheets-plans.md), a
+ * `settings.json` at version 3 (2026-11-25): reference sheets (ADR 0045), a
  * Feature of their own, with the edit model that repaints faces from them and the Image Model that
  * makes them. A full copy of version 2's types, so a later change to `shared/` leaves it as it was;
  * what each field means is in `shared/settings.ts`. The change from version 2 is marked "v3".

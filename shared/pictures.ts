@@ -43,7 +43,7 @@ export interface PictureEdit extends PictureVersion {
 }
 
 /**
- * A version's face pass (docs/reference-sheets-plans.md): the faces of the Subjects it shows with a
+ * A version's face pass (ADR 0045): the faces of the Subjects it shows with a
  * reference sheet repainted from their sheets, one edit each, after it was rendered or edited. The
  * version's own files are the faces, and the picture before the pass is kept beside them (`other`);
  * "Without the face pass" swaps the two, so the Frame uses the picture before, each keeping what

@@ -1,6 +1,6 @@
 <!--
 The face pass's instruction (`face.md`) after the player's edit of a painted area over a face
-(stage 5, docs/reference-sheets-plans.md): the face edit model is told what the edit changed, so it
+(stage 5, ADR 0045): the face edit model is told what the edit changed, so it
 keeps it, and to keep the expression as the picture has it, not as the Frame's sentence names it,
 which the edit ("make him smile") may have changed. Told the Frame's expression, or nothing, the
 pass painted out a smile, a cap and a cut on every seed; told this, it kept all three

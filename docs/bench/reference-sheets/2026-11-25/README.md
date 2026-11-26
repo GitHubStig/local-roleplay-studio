@@ -1,6 +1,6 @@
 # Reference sheets, stage 0 (2026-11-25)
 
-The quick benches before building reference sheets: what [reference-sheets-plans.md](../../../reference-sheets-plans.md) left open after the [portrait and sheet trials](../../reference-portraits/2026-11-25/README.md). What was found is in the plan's stage 0; this page keeps the pictures, for the [showcase](../../../showcase/README.md).
+The quick benches before building reference sheets: what [reference sheets](../../../research/people-in-pictures.md#reference-sheets-as-built-2026-11-26) left open after the [portrait and sheet trials](../../reference-portraits/2026-11-25/README.md). What was found is in [research](../../../research/people-in-pictures.md#0-bench-whats-still-open-done-2026-11-25), stage 0; this page keeps the pictures, for the [showcase](../../../showcase/README.md).
 
 Everything is the two-pass way: a picture rendered without a reference, then a face pass (an edit by Qwen-Image 2.1, the head's area painted, the sheet as the second image). On the Windows PC's ComfyUI 0.46.3, sent from the Mac (Qwen-Image 2.1 int8, its cache on the GPU, 1024², the scenes at seed 8, the edits at 9 and 10); the finders other than Qwen3-VL on the Mac's ComfyUI 0.46.3. Kael and Elara Vance from the public tavern scenario (`example-scenarios/tavern.md`), with Grax, a troll, and the Lantern of Vael made up for it.
 

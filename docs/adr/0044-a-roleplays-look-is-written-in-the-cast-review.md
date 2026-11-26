@@ -4,7 +4,7 @@ status: accepted
 
 # A Roleplay's Look is written in the Cast review, as a queued job
 
-Until 2026-11-25 a Roleplay's Look (each Subject's identity, and the art style) was written the first time a Frame was pictured, by the same job that pictured it. Reference sheets ([reference-sheets-plans.md](../reference-sheets-plans.md)) are made from the Look and settled before the story begins, so the Look has to exist by then; and the owner thought it better anyway, as the player can read and edit it in Look & Cast before anything is pictured. Since 2026-11-25:
+Until 2026-11-25 a Roleplay's Look (each Subject's identity, and the art style) was written the first time a Frame was pictured, by the same job that pictured it. Reference sheets ([ADR 0045](0045-faces-are-repainted-from-a-reference-sheet.md)) are made from the Look and settled before the story begins, so the Look has to exist by then; and the owner thought it better anyway, as the player can read and edit it in Look & Cast before anything is pictured. Since 2026-11-25:
 
 - **Every Roleplay's Look is written while its Cast is reviewed**, with pictures on or off: one path, for consistency (the owner). The call costs little: 2.2 s on the Mac (Gemma 4 26B, Thinking off), against 8.7 s for the Cast before it.
 - **It's a job of its own (`look`), queued by the server as the Cast is saved**, as what follows a Reply is ([ADR 0031](0031-the-server-queues-what-follows-a-reply.md)), so it runs while the Text Model is still loaded for the Cast. Begin doesn't wait for it, nor do edits: it holds no lock. The first picture waits for it, as a job waits for what it needs.
