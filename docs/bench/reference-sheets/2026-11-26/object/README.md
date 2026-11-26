@@ -29,15 +29,21 @@ Each Frame's lantern before its pass, then as a face and as a thing, seeds 10 an
 ## Built
 
 - **A sheet's check keeps whether it's a thing's** (`SheetPicture.thing`, `session.json` v6): its count of heads, already asked (`count.md`), is none. A sheet made before v6, or not checked, is taken for a person's.
-- **A thing is told as one** (`prompts/faces/thing.md`; after an edit told its change, `thing-edited.md`, not benched): neither the Frame's expression nor its clothing sentence is named, as both are about people.
+- **A thing is told as one** (`prompts/faces/thing.md`; after an edit told its change, `thing-edited.md`, below): neither the Frame's expression nor its clothing sentence is named, as both are about people.
 - The same v6 keeps **a Storyboard Frame's clothing sentence apart** (`FrameImage.clothing`), as a Roleplay Frame's was, so its face pass names it too, as [marks/](../marks/README.md) built for a Roleplay; a Storyboard Frame written before v6 has none ('').
 
 Through the app with it built (the same replay again, `results/replay-v6.log`): saved at v6, the lantern's sheet a thing's and Kael's a person's, each Frame's clothing sentence kept; the lantern told as a thing in all three Frames and Kael his clothing sentence named in his two. No face anywhere; the lantern took its sheet's shape and etching in all three, glowing, a little dimmer alone on the shelf; Kael his sheet's face. The same renders as the first run (the same seed), so the difference is the pass's:
 
 ![](04-thing-through-the-app.jpg)
 
+## An edit over a thing
+
+`thing-edited.md` through the app (the replay run once more, then `../edits/edit.sh`, `results/thing-edit.log`, the PC): a crack painted over the lantern alone on Frame 2 ("A long crack runs across the lantern's front pane of glass.", Qwen-Image 2.1 Edit), then its pass, told that instruction as the change to keep (seen in the call log), at 0.9 as the lantern's pass was in use. The crack kept, drawn a little differently; the lantern still its sheet's shape, glowing; 65 s (the edit 26 s). One seed. The render's pass, the edit, its pass:
+
+![](05-thing-edited.jpg)
+
 ## Files
 
 - `lantern.yaml`: the replay. `run.sh`: the lantern's passes on the first run's renders.
 - `results/`: the two replays and the passes, with the instruction each was told.
-- Not kept: the two Sessions (deleted after), the passes' full-size pictures.
+- Not kept: the three Sessions (deleted after), the passes' full-size pictures.

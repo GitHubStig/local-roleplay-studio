@@ -81,7 +81,7 @@ One render of a Subject from the front, at a three-quarter turn and in profile, 
 _Avoid_: Portrait, character sheet, turnaround, model sheet
 
 **Face pass**:
-Repainting the faces of the Subjects a picture shows, one edit each, from the view of their reference sheet nearest the way each head is turned, after each render and each edit in a Session with sheets. What the picture was before it is kept beside it.
+Repainting the faces of the Subjects a picture shows, one edit each, from the view of their reference sheet nearest the way each head is turned, after each render and each edit in a Session with sheets; a thing (a lantern) is repainted whole, taking its sheet's shape and keeping its state. What the picture was before it is kept beside it.
 _Avoid_: Face fix, face swap, detailer, inpaint
 
 **Cast**:

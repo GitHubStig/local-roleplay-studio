@@ -1,8 +1,9 @@
 <!--
 The face pass's instruction for a thing (`thing.md`) after the player's edit of a painted area over
 it, or of the whole picture other than a camera move: told the edit's change to keep, as a person's
-is (`face-edited.md`). Not benched for a thing: the words of `thing.md`, with the change kept as
-`face-edited.md` keeps it.
+is (`face-edited.md`): the words of `thing.md`, with the change kept as `face-edited.md` keeps it.
+Through the app once, a crack painted on the Lantern of Vael's glass was kept
+(docs/bench/reference-sheets/2026-11-26/object/).
 
 Values: name (the Subject's name in the Look), change (the edit's instruction, as the player sent
 it)
