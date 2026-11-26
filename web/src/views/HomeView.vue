@@ -128,6 +128,7 @@ const ACTIVITY_LABELS = {
   image: 'Rendering…',
   audio: 'Speaking…',
   download: 'Downloading a model…',
+  faces: 'Repainting faces…',
 } as const
 
 </script>

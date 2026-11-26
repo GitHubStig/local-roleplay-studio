@@ -1,5 +1,6 @@
 /** What a stream of work sends as it goes (server-sent events): each kind of work's own events, and how any stream ends. Shared by the server and the web app: types and plain values only. */
 import type { ImageBackendKind } from './images.ts'
+import type { FacesStep } from './jobs.ts'
 import type { Cast, Reply, RoleplayFrame, RoleplaySession, Score } from './roleplay.ts'
 import type {
   ChainFrame,
@@ -23,6 +24,11 @@ export type ProgressEvent =
   | { type: 'thinking'; text: string; restart?: boolean }
   /** Image Model steps completed so far. */
   | { type: 'progress'; step: number; total: number }
+  /**
+   * A render's face pass begins (`subjects`: whose faces it repaints, the render saved meanwhile),
+   * or is skipped (`skipped`: why, the picture saved as rendered).
+   */
+  | { type: 'faces'; faces: FacesStep }
 
 /** Progress of a Chain Frame, streamed to the player as it happens. */
 export type FrameEvent =
@@ -45,6 +51,8 @@ export type StoryboardEvent =
   /** A Frame written from the plan, saved as it comes; `written` once the last one is. */
   | { type: 'written-frame'; frame: StoryboardFrame }
   | { type: 'written'; session: StoryboardSession }
+  /** Writing waits for the reference sheets still being made of these Subjects, which its Beats show. */
+  | { type: 'waiting-for-sheets'; subjects: string[] }
   | { type: 'rendered'; frame: StoryboardFrame }
   /** A Frame edited by Action: how the Action was received, and the Storyboard after it. */
   | { type: 'edited'; outcome: Outcome; narration: string; session: StoryboardSession }

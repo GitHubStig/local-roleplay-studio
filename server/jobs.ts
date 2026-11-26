@@ -34,7 +34,7 @@ import { CLIP_KINDS } from './video/videoGenerator.ts'
 import type { ClipAsk, ClipKind, ClipOrder } from '../shared/clips.ts'
 import { type ComfyTrace, withTrace } from './comfyui/traces.ts'
 import type { ComfyTraces } from '../shared/comfyui.ts'
-import type { EditOrder, ImageChoice, Job, TextChoiceKept } from '../shared/jobs.ts'
+import type { EditOrder, FacesStep, ImageChoice, Job, TextChoiceKept } from '../shared/jobs.ts'
 
 /** Every Session's jobs, as the queue is saved between runs of the server. */
 export type SavedQueue = { sessionId: string; jobs: Job[] }[]
@@ -117,6 +117,8 @@ export type JobEmit = (
     imageBackend?: ImageBackendKind
     /** Something it has left on a ComfyUI (`Job.comfy`). */
     comfy?: ComfyTrace
+    /** A render's face pass: whose faces, or why none (`Job.faces`). */
+    faces?: FacesStep
   },
 ) => void
 
@@ -254,8 +256,29 @@ export class SessionJobs {
     while (this.#saving) await this.#saving
   }
 
+  /** Those waiting for jobs to be gone (`whenGone`), woken at every change to the queue. */
+  #waiting = new Set<() => void>()
+
+  /**
+   * Waits until no job `which` picks is queued or running on Session `sessionId`: done, failed,
+   * cancelled or dismissed. Stops waiting, and throws, once `signal` aborts.
+   */
+  async whenGone(sessionId: string, which: (job: Job) => boolean, signal: AbortSignal) {
+    while ((this.#jobs.get(sessionId) ?? []).some((j) => isOpen(j) && which(j))) {
+      signal.throwIfAborted()
+      const { promise, resolve } = Promise.withResolvers<void>()
+      this.#waiting.add(resolve)
+      signal.addEventListener('abort', () => resolve(), { once: true })
+      await promise
+      this.#waiting.delete(resolve)
+    }
+    signal.throwIfAborted()
+  }
+
   /** Saves the queue, once at a time: a change while it's saved is saved again after. */
   #save() {
+    for (const wake of this.#waiting) wake()
+    this.#waiting.clear()
     if (!this.#store) return
     this.#changed = true
     if (this.#saving) return
@@ -283,7 +306,8 @@ export class SessionJobs {
    * Queues a job. Asking again for work already queued or running on that Frame returns that job
    * instead of queueing it twice; a render by another Image Model is other work. A picture (a
    * Roleplay Frame's Image Prompt) goes ahead of queued image jobs: a new Reply's is written while
-   * its Text Model is still loaded, not after a batch of renders that each unload it. `machine` is
+   * its Text Model is still loaded, not after a batch of renders that each unload it; a reference
+   * sheet goes ahead of queued renders, which wait for it. `machine` is
    * where it runs (`machineKey`), `image` a render's Image Model (`Job.image`), `edit` an
    * edit's order and `clip` a clip's; `text` the Session's Text Model, kept by a job of a kind that
    * asks it (`TEXT_JOBS`); `exported` an export's folder.
@@ -319,6 +343,10 @@ export class SessionJobs {
     }
     const ahead = kind === 'picture'
       ? jobs.findIndex((j) => j.status === 'queued' && IMAGE_JOBS.includes(j.kind))
+      : kind === 'sheet'
+      // Ahead of the renders queued before it (a Roleplay begun before its Look was written), as
+      // each render's face pass needs the sheets.
+      ? jobs.findIndex((j) => j.status === 'queued' && j.kind === 'render')
       : IMAGE_JOBS.includes(kind) && !LATE_JOBS.includes(kind)
       ? clipsAhead(jobs, frameIndex)
       : -1
@@ -493,11 +521,14 @@ export class SessionJobs {
     this.#running.set(sessionId, running.set(job.id, { job, controller, done }))
     job.status = 'running'
     job.phase = 'text'
+    // A retried render tells its face pass afresh.
+    delete job.faces
     job.startedAt = new Date().toISOString()
     this.#save()
     const emit: JobEmit = (event) => {
       if (event.type === 'phase' && event.phase) job.phase = event.phase
       if (event.imageBackend) job.imageBackend = event.imageBackend
+      if (event.type === 'faces' && event.faces) job.faces = event.faces
       if (event.type === 'progress') job.progress = { step: event.step!, total: event.total! }
       if (event.comfy) {
         job.comfy = withTrace(job.comfy, event.comfy)

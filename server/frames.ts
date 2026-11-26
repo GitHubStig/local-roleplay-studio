@@ -3,11 +3,14 @@ import { imageKindOf } from './backends.ts'
 import type { Backend } from '../shared/backends.ts'
 import {
   changeFramePicture,
+  changeRenderedPicture,
   pictureFiles,
   removeFiles,
   shownVersionOf,
+  swapFaces,
   withPicture,
 } from './pictures.ts'
+import { type FaceWay, NO_ONE_WITH_A_SHEET, shownSheets } from './faces/facePass.ts'
 import type { Picture } from '../shared/pictures.ts'
 import type { ImageGenerator, ImageSize } from './images/imageGenerator.ts'
 import { anyImageModel } from './images/imageModels.ts'
@@ -59,6 +62,8 @@ export interface FrameDeps {
   settings?: () => Promise<Settings>
   /** The Backend a heavy job goes to now (`backendOf`); left out, the image generator finds it. */
   backendOf?: (job: HeavyJob) => Promise<Backend | undefined>
+  /** How faces are repainted from reference sheets after a render; none where heads can't be found. */
+  faces?: FaceWay
 }
 
 /** What rendering a picture needs: a Roleplay renders with these, its text going through its own model. */
@@ -205,12 +210,26 @@ export async function renderImage(
   }
 }
 
+/** Who a Frame shows and how they look, for its face pass (`replacePicture`). */
+export interface FacesOf {
+  /** The Look's Subjects it shows, by name, the most prominent first. */
+  shown: string[]
+  /** Its expression sentence, '' when not known. */
+  expression: string
+}
+
 /**
  * Renders a new picture for Frame `index` with the Session's Image Model and puts it on the Frame
  * as it is now (`save`), in place of its picture by the same model, whose files (and what was made
  * from it: upscale, scene, figures) are then deleted. Its pictures by other models stay, for
  * switching back. Stale if the Frame's Image Prompt changed while it rendered. On failure or Cancel
  * nothing changes, and the new file is removed.
+ *
+ * In a Session with reference sheets, the render is then given its face pass (`faces`, the Frame's
+ * who and how): saved first, so it shows while its faces are repainted, then saved again with
+ * them, the render kept beside them. A Frame that shows no one with a sheet, or whose heads aren't
+ * found, keeps its render, and its job says so; one whose face pass fails or is cancelled keeps it
+ * too.
  */
 export async function replacePicture<S extends Session>(
   deps: RenderDeps,
@@ -220,12 +239,15 @@ export async function replacePicture<S extends Session>(
   emit: (event: ProgressEvent) => void,
   signal: AbortSignal,
   save: (change: (s: S) => S) => Promise<S>,
+  faces?: FacesOf,
 ): Promise<{ session: S; frame: S['frames'][number] }> {
   const name = imageName(index)
   const dir = deps.store.dir(session.id)
   const { createdAt } = session.frames[index]
+  let rendered: Picture
+  let saved: { session: S; frame: S['frames'][number] }
   try {
-    const rendered = await renderImage(deps, session, prompt, name, emit, signal)
+    rendered = await renderImage(deps, session, prompt, name, emit, signal)
     signal.throwIfAborted()
     let frame!: S['frames'][number]
     let replaced: Picture | undefined
@@ -239,9 +261,51 @@ export async function replacePicture<S extends Session>(
       return { ...latest, frames: latest.frames.map((f) => (f === old ? frame : f)) } as S
     })
     if (replaced) await removeFiles(dir, pictureFiles(replaced))
-    return { session: updated, frame }
+    saved = { session: updated, frame }
   } catch (err) {
     await removeImage(dir, name)
+    throw err
+  }
+  if (!faces || saved.session.kind === 'chain' || !saved.session.settings.sheets) return saved
+  const sheets = shownSheets(saved.session.sheets, faces.shown)
+  const skip = (skipped: string) => {
+    emit({ type: 'faces', faces: { subjects: [], skipped } })
+    return saved
+  }
+  if (!sheets.length) return skip(NO_ONE_WITH_A_SHEET)
+  if (!deps.faces) return skip('Nothing here can find heads: saved as rendered.')
+  if (!rendered.file.endsWith('.png')) return skip('A placeholder picture: saved as rendered.')
+  const done = await deps.faces.repaint(
+    {
+      session: saved.session,
+      index,
+      file: rendered.file,
+      seed: session.seed,
+      sheets,
+      expression: faces.expression,
+    },
+    emit,
+    signal,
+  )
+  if ('skipped' in done) return skip(done.skipped)
+  const { file, pass, missed } = done.faced
+  try {
+    signal.throwIfAborted()
+    let frame!: S['frames'][number]
+    const updated = await save((latest) => {
+      // The faces are the picture now, the render kept beside them with what was made from it.
+      const changed = changeRenderedPicture(
+        latest,
+        rendered.file,
+        (p) => swapFaces({ ...p, faces: { ...pass, without: true, other: { file } } }),
+      )
+      frame = followFrame<S['frames'][number]>(changed.frames, index, createdAt)!
+      return changed
+    })
+    emit({ type: 'faces', faces: { subjects: pass.subjects, ...(missed.length && { missed }) } })
+    return { session: updated, frame }
+  } catch (err) {
+    await removeFiles(dir, [file])
     throw err
   }
 }

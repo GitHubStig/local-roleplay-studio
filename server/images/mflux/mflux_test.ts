@@ -74,6 +74,21 @@ Deno.test("editArgs edits at the picture's size, quantized as Settings say, in l
     ),
     false,
   )
+  // A face pass's: its reference after the picture, and part-way from it when told.
+  const face = editArgs(
+    { ...req, references: ['sheet-view2.png'], strength: 0.92 },
+    { width: 1216, height: 832 },
+    'o.png',
+  )
+  assertEquals(face.slice(face.indexOf('--image-paths'), face.indexOf('--mask-image')), [
+    '--image-paths',
+    join('/s', 'frame-1.png'),
+    join('/s', 'sheet-view2.png'),
+  ])
+  assertEquals(face.slice(face.indexOf('--strength'), face.indexOf('--strength') + 2), [
+    '--strength',
+    '0.92',
+  ])
   // Turbo from its own mflux-community copy.
   assertEquals(
     editArgs({ ...req, model: 'qwen-image-2.1-turbo-edit' }, { width: 1216, height: 832 }, 'o.png')

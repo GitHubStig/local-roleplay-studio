@@ -11,9 +11,11 @@ import {
 import { scenarioFor } from '../appContext.ts'
 import type { AppContext } from '../appContext.ts'
 import { frameIndexOf, isStringList, needsStoryboard } from '../appContext.ts'
+import { isOpen } from '../jobs.ts'
+import type { Job } from '../../shared/jobs.ts'
 
 export function storyboardRoutes(ctx: AppContext): Route[] {
-  const { deps, locked, stream, frameDeps, queueSheets } = ctx
+  const { deps, locked, stream, frameDeps, queueSheets, jobs } = ctx
 
   return [
     [
@@ -50,6 +52,16 @@ export function storyboardRoutes(ctx: AppContext): Route[] {
             )
           }
           return stream(session, null, false, async (send, signal) => {
+            // The sheets the Beats need first, as writing settles them and their renders use
+            // them: those of the Subjects shown still being made.
+            const shown = new Set(session.frames.flatMap((f) => f.shown))
+            const making = (j: Job) =>
+              j.kind === 'sheet' && isOpen(j) && shown.has(j.sheet!.subject)
+            const waiting = jobs.list(session.id).filter(making).map((j) => j.sheet!.subject)
+            if (waiting.length) {
+              send({ type: 'waiting-for-sheets', subjects: waiting })
+              await jobs.whenGone(session.id, making, signal)
+            }
             await writeStoryboard(frameDeps(session), session, scenario, send, signal)
           })
         }),

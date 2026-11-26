@@ -260,7 +260,8 @@ export async function renderStoryboardFrame(
   emit: (event: StoryboardEvent) => void,
   signal: AbortSignal,
 ): Promise<StoryboardFrame> {
-  const { image } = checkWritten(session, index)
+  const frame = checkWritten(session, index)
+  const { image } = frame
   if (image.blocked) throw new LimitError(`${frameName(index)} crosses a limit: ${image.blocked}`)
 
   const { frame: rendered } = await replacePicture(
@@ -271,6 +272,7 @@ export async function renderStoryboardFrame(
     emit,
     signal,
     (change) => updateSession(deps.store, session.id, 'storyboard', change),
+    { shown: frame.shown, expression: image.expression },
   )
   emit({ type: 'rendered', frame: rendered })
   return rendered

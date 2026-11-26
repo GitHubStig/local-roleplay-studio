@@ -2,6 +2,7 @@
  * What the API's tests share (`app_test.ts`, and each part's `api_test.ts`, `routes_test.ts` and
  * `jobs_test.ts`): the app over fakes, and readers for what it answers.
  */
+import type { HeadFinder } from './heads/heads.ts'
 import { type AppDeps, createHandler } from './app.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import { dirSessionStore } from './session.ts'
@@ -78,6 +79,8 @@ export interface SetupOptions {
   style?: StyleEmbedder
   video?: VideoGenerator
   music?: MusicGenerator
+  /** Finds heads for the face pass of reference sheets; none, renders keep their faces. */
+  headFinder?: HeadFinder
   settings?: Partial<Settings>
   /** What this "machine" can run; left out, whatever backends are given. */
   features?: Availabilities
@@ -127,6 +130,7 @@ export function setup(opts: SetupOptions = {}) {
     style: opts.style,
     video: opts.video,
     music: opts.music,
+    headFinder: opts.headFinder,
     features: opts.features,
     exports: opts.exports,
     web: opts.web,

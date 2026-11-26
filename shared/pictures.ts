@@ -41,6 +41,25 @@ export interface PictureEdit extends PictureVersion {
 }
 
 /**
+ * A picture's face pass (docs/reference-sheets-plans.md): the faces of the Subjects it shows with a
+ * reference sheet repainted from their sheets, one edit each, after it rendered. The picture's own
+ * files are the faces, and the render before the pass is kept beside them (`other`); "Without the
+ * face pass" swaps the two, so the Frame uses the render, each keeping what was made from it.
+ */
+export interface FacePass {
+  /** Whose faces were repainted, by their names in the Look, in the order they were. */
+  subjects: string[]
+  /** Its last edit's seed, so an edit made from the faces is seeded one on (ADR 0011). */
+  seed: number
+  /** The Frame uses the render without the face pass: the picture's files are the render's. */
+  without: boolean
+  /** The version not in use: the render before the pass, or with `without`, the faces. */
+  other: PictureVersion
+  /** Seconds it took to find the heads, and to repaint the faces. */
+  timings: { find: number; faces: number }
+}
+
+/**
  * A Frame's picture by one Image Model, and what was made from it. A Frame keeps one per model it
  * was rendered with, so switching the Session's model back shows that model's again without
  * rendering. Its own files are its render's (the Original); its edits, if any, follow in a
@@ -63,6 +82,8 @@ export interface Picture extends PictureVersion {
   edits?: PictureEdit[]
   /** The version that is the picture everywhere: 0 (or none) for the render, n for `edits[n - 1]`. */
   picked?: number
+  /** Its face pass, if it had one; none for a picture whose faces are as rendered. */
+  faces?: FacePass
 }
 
 /** A model's pictures deleted from a Session: the Session after, and how many went (`DELETE /api/sessions/:id/pictures`). */

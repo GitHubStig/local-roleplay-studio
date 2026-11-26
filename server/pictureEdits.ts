@@ -24,6 +24,7 @@ import {
   PictureGoneError,
   removeFiles,
   shownPictureOf,
+  swapFaces,
   versionFiles,
 } from './pictures.ts'
 import type { PictureEdit } from '../shared/pictures.ts'
@@ -102,9 +103,11 @@ export async function editFrame<S extends Session>(
   // Never the seed its source was made with: on ComfyUI the same seed at the same size is the
   // same starting noise, and an edit started from its own picture's noise, with that picture as
   // its reference, redraws the picture over-sharpened and ignores the instruction ("noise replay",
-  // docs/research/image-models.md). The render is made with the Session's seed, and each edit is
-  // one on from what it's made from; a retry, one on from the edit it replaces.
-  const seed = redo ? redo.seed + 1 : ('seed' in from ? from.seed : session.seed) + 1
+  // docs/research/image-models.md). The render is made with the Session's seed (its faces, if it
+  // had a face pass in use, with the pass's last), and each edit is one on from what it's made
+  // from; a retry, one on from the edit it replaces.
+  const original = picture.faces && !picture.faces.without ? picture.faces.seed : session.seed
+  const seed = redo ? redo.seed + 1 : ('seed' in from ? from.seed : original) + 1
   // Found once, so the edit records where it was made.
   const backend = await deps.backendOf?.(editJob(model, order.backend))
   const kind = backend && imageKindOf(backend)
@@ -196,6 +199,24 @@ export function pickVersion(
       throw new VersionError(`${frameName(index)}'s picture has no version ${picked}`)
     }
     return changeRenderedPicture(latest, picture.file, (p) => ({ ...p, picked }))
+  })
+}
+
+/**
+ * Uses the render without its face pass for the picture Frame `index` shows (`without`), or its
+ * faces again: the two swap, each keeping what was made from it (`swapFaces`).
+ */
+export function useFaces(
+  store: SessionStore,
+  session: Session,
+  index: number,
+  without: boolean,
+): Promise<Session> {
+  return updateSession(store, session.id, session.kind, (latest: Session) => {
+    const picture = shownPictureOf(latest, index)
+    if (!picture?.faces) throw new VersionError(`${frameName(index)}'s picture had no face pass`)
+    if (picture.faces.without === without) return latest
+    return changeRenderedPicture(latest, picture.file, swapFaces)
   })
 }
 

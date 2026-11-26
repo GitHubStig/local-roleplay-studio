@@ -45,9 +45,12 @@ export const shownVersionOf = (session: Session, index: number): PictureVersion 
   return picture && pickedVersion(picture)
 }
 
-/** `image` is a version of this picture: its render, or one of its edits. */
+/**
+ * `image` is a version of this picture: its render, one of its edits, or the one its face pass
+ * keeps beside it.
+ */
 const hasVersion = (p: Picture, image: string): boolean =>
-  p.file === image || !!p.edits?.some((e) => e.file === image)
+  p.file === image || p.faces?.other.file === image || !!p.edits?.some((e) => e.file === image)
 
 const inSession = (session: Session, image: string): boolean =>
   (session.frames as PicturedFrame[]).some((f) => f.pictures.some((p) => hasVersion(p, image)))
@@ -172,6 +175,29 @@ export function changeRenderedPicture<S extends Session>(
   } as S
 }
 
+/** A version's own fields, taken from a picture: its image and what was made from it. */
+export const versionOf = (
+  { file, upscaled, scene, figure, lito, clips }: PictureVersion,
+): PictureVersion => ({
+  file,
+  ...(upscaled && { upscaled }),
+  ...(scene && { scene }),
+  ...(figure && { figure }),
+  ...(lito && { lito }),
+  ...(clips && { clips }),
+})
+
+/**
+ * A picture with its face pass's two versions swapped, each keeping what was made from it: the
+ * render before the pass in use ("Without the face pass"), or the faces again.
+ */
+export function swapFaces(p: Picture): Picture {
+  if (!p.faces) return p
+  const { file: _, upscaled: __, scene: ___, figure: ____, lito: _____, clips: ______, ...rest } = p
+  const { other, ...pass } = p.faces
+  return { ...rest, ...other, faces: { ...pass, without: !pass.without, other: versionOf(p) } }
+}
+
 /** Pictures marked out of date, after the Image Prompt they were rendered from changed. */
 export const allStale = (pictures: Picture[]): Picture[] =>
   pictures.map((p) => ({ ...p, stale: true }))
@@ -188,9 +214,13 @@ export const versionFiles = (v: PictureVersion): string[] =>
   ]
     .filter((f): f is string => !!f)
 
-/** The files a picture is made of: its render's, and each edit's with its painted area. */
+/**
+ * The files a picture is made of: its render's (the face pass's, and the render kept before it), and
+ * each edit's with its painted area.
+ */
 export const pictureFiles = (p: Picture): string[] => [
   ...versionFiles(p),
+  ...(p.faces ? versionFiles(p.faces.other) : []),
   ...(p.edits ?? []).flatMap((e) => [...versionFiles(e), ...(e.mask ? [e.mask] : [])]),
 ]
 

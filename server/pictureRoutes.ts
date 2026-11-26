@@ -6,7 +6,7 @@ import { join } from '@std/path'
 import { error, json, readJson, type Route } from './http.ts'
 import { anyImageModel, findImageModel } from './images/imageModels.ts'
 import { IMAGE_BACKEND_NAMES, IMAGE_BACKENDS, type ImageBackendKind } from '../shared/images.ts'
-import { deleteNewestEdit, deleteUpscale, pickVersion } from './pictureEdits.ts'
+import { deleteNewestEdit, deleteUpscale, pickVersion, useFaces } from './pictureEdits.ts'
 import { loadStyleCache, styleScores, unembedded } from './style/scores.ts'
 import { isOpen, onModelPictures } from './jobs.ts'
 import { parseComparisonExport } from './export/comparison.ts'
@@ -15,6 +15,11 @@ import { chooseThumbnail, refuseOwnModel, switchImageModel } from './pictures.ts
 import { deleteModelPictures } from './keep.ts'
 import type { AppContext } from './appContext.ts'
 import { Refusal } from './refusal.ts'
+import { PICTURE_JOB_KINDS } from './pictureJobs.ts'
+import type { JobKind } from '../shared/jobKinds.ts'
+
+/** The jobs that make or work on a Frame's picture, which a swap of its versions would upset. */
+const ON_PICTURE: readonly JobKind[] = ['render', 'edit', ...PICTURE_JOB_KINDS]
 
 export function pictureRoutes(ctx: AppContext): Route[] {
   const { deps, jobs, loadSession, heavyBackend } = ctx
@@ -93,6 +98,24 @@ export function pictureRoutes(ctx: AppContext): Route[] {
         return json(
           await pickVersion(deps.sessions, session, Number(p.index), Number(body?.picked)),
         )
+      },
+    ],
+
+    // Uses the render before the face pass for Frame `:index`'s picture (`{ without: true }`), or
+    // its faces again (`false`), unless work on its picture is queued or running, which would land
+    // on the other. Sends back the Session.
+    [
+      'PUT',
+      new URLPattern({ pathname: '/api/sessions/:id/pictures/:index/faces' }),
+      async (req, p) => {
+        const body = await readJson(req) as { without?: unknown } | undefined
+        if (typeof body?.without !== 'boolean') return error('without must be true or false', 400)
+        const session = await loadSession(p.id!)
+        const index = Number(p.index)
+        const working = jobs.list(session.id)
+          .some((j) => j.frameIndex === index && isOpen(j) && ON_PICTURE.includes(j.kind))
+        if (working) return error('That picture is being worked on: wait for it first', 409)
+        return json(await useFaces(deps.sessions, session, index, body.without))
       },
     ],
 

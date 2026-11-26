@@ -86,8 +86,14 @@ export function comfyuiImageGenerator(opts: {
       const image = await Deno.readFile(join(req.dir, req.image))
       const size = pngSize(image)
       const mask = req.mask ? await Deno.readFile(join(req.dir, req.mask)) : undefined
+      const references = await Promise.all(
+        (req.references ?? []).map((r) => Deno.readFile(join(req.dir, r))),
+      )
       const prompt = await editPrompt(editor.prompt, req.instruction, mask)
-      return withUploads(base, mask ? [image, mask] : [image], async ([image, mask]) => {
+      const uploads = [image, ...references, ...(mask ? [mask] : [])]
+      return withUploads(base, uploads, async ([image, ...rest]) => {
+        const refs = rest.slice(0, references.length)
+        const mask = rest[references.length]
         const workflow = fillWorkflow(await loadModelWorkflow(editor.workflow), {
           ...files,
           image: `${image} [temp]`,
@@ -107,6 +113,19 @@ export function comfyuiImageGenerator(opts: {
           for (const node of ['mask', 'encode', 'masked', 'composite']) delete workflow[node]
           workflow.sampler.inputs.latent_image = ['conditioning', 2]
         }
+        if (req.strength !== undefined) workflow.sampler.inputs.denoise = req.strength
+        // Each reference as the encoder's next image (TextEncodeQwenImage21's `images.image_2`…),
+        // as the sheet bench passed them (docs/bench/reference-sheets/2026-11-25/).
+        refs.forEach((name, i) => {
+          if (!workflow.conditioning?.inputs['images.image_1']) {
+            throw new Error(`${req.model} on ComfyUI takes no reference pictures`)
+          }
+          workflow[`reference${i + 2}`] = {
+            class_type: 'LoadImage',
+            inputs: { image: `${name} [temp]` },
+          }
+          workflow.conditioning.inputs[`images.image_${i + 2}`] = [`reference${i + 2}`, 0]
+        })
         const file = `${req.name}.png`
         await Deno.writeFile(join(req.dir, file), await picture(base, workflow, signal, onProgress))
         return file

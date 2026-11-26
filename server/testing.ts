@@ -235,7 +235,8 @@ export async function testPng(width: number, height: number): Promise<Uint8Array
 }
 
 export function fakeImageGenerator(
-  opts: { fail?: boolean; hang?: boolean } = {},
+  /** `pictures`: each render a real PNG (26×38), as the face pass reads its size, and each edit a copy. */
+  opts: { fail?: boolean; hang?: boolean; pictures?: boolean } = {},
 ): ImageGenerator & {
   prompts: string[]
   settings: Settings[]
@@ -283,6 +284,8 @@ export function fakeImageGenerator(
           `${req.dir}/${file}`,
           await testPng(req.size.width / 32, req.size.height / 32),
         )
+      } else if (opts.pictures) {
+        await Deno.writeFile(`${req.dir}/${file}`, await testPng(26, 38))
       } else await Deno.writeTextFile(`${req.dir}/${file}`, req.prompt)
       return file
     },
@@ -313,7 +316,8 @@ export function fakeImageGenerator(
         )
       }
       const file = `${req.name}.png`
-      await Deno.writeTextFile(`${req.dir}/${file}`, `${req.image} edited: ${req.instruction}`)
+      if (opts.pictures) await Deno.copyFile(`${req.dir}/${req.image}`, `${req.dir}/${file}`)
+      else await Deno.writeTextFile(`${req.dir}/${file}`, `${req.image} edited: ${req.instruction}`)
       return file
     },
   }

@@ -76,7 +76,9 @@ function copiedPicture(picture: Picture, index: number, files: [string, string][
       ...(lito ? { lito: { ...lito, file: rename(lito.file) } } : {}),
     }
   }
-  const { edits, picked, ...render } = picture
+  // The picture as its face pass left it, or as rendered where the Frame uses that: a Chain has
+  // no sheets, so neither the render kept beside the faces nor the pass goes with it.
+  const { edits, picked, faces: __, ...render } = picture
   const edit = picked ? edits?.[picked - 1] : undefined
   if (!edit) return copied(render)
   const { mask: _, ...made } = edit

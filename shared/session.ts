@@ -91,7 +91,8 @@ export interface SheetPicture {
  */
 export type SessionKind = 'chain' | 'storyboard' | 'roleplay'
 
-export type Phase = 'text' | 'queued' | 'image' | 'audio' | 'download'
+/** `faces`: a render's face pass, repainting faces from their reference sheets. */
+export type Phase = 'text' | 'queued' | 'image' | 'audio' | 'download' | 'faces'
 
 /** What every Frame has, of every kind. */
 export interface FrameBase {

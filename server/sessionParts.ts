@@ -76,9 +76,15 @@ const CALL_LOG = /^calls\/(frame-\d+|setup)\.json$/
 
 /** Every picture of every Frame, by every Image Model. */
 const picturesOf = (session: Session): Picture[] => session.frames.flatMap((f) => f.pictures)
+/** A picture's versions: its render (and the one its face pass keeps beside it), and each edit. */
+const picturesVersions = (p: Picture): PictureVersion[] => [
+  p,
+  ...(p.faces ? [p.faces.other] : []),
+  ...(p.edits ?? []),
+]
 /** Every version of every picture: each render and each edit. */
 const versionsOf = (session: Session): PictureVersion[] =>
-  picturesOf(session).flatMap((p) => [p, ...(p.edits ?? [])])
+  picturesOf(session).flatMap(picturesVersions)
 
 /** The Session with each picture changed by `change`. */
 const changePictures = (session: Session, change: (p: Picture) => Picture | null): Session =>
@@ -97,12 +103,18 @@ const changeVersions = (
 ): Session =>
   changePictures(session, (p) => {
     const changed = change(p)
-    return p.edits ? { ...changed, edits: p.edits.map((e) => change(e) as PictureEdit) } : changed
+    const faced = p.faces
+      ? { ...changed, faces: { ...p.faces, other: change(p.faces.other) } }
+      : changed
+    return p.edits ? { ...faced, edits: p.edits.map((e) => change(e) as PictureEdit) } : faced
   })
 
-/** The picture as it shows now, made its Original: its picked version's files, its history gone. */
+/**
+ * The picture as it shows now, made its Original: its picked version's files, its history gone (the
+ * render before its face pass too, unless the Frame uses it, when it's the picture kept).
+ */
 function asChosen(p: Picture): Picture {
-  const { edits: _, picked, ...render } = p
+  const { edits: _, picked, faces: ___, ...render } = p
   const edit = picked ? p.edits?.[picked - 1] : undefined
   if (!edit) return render
   const { file, upscaled, scene, figure, lito, clips } = edit
@@ -120,9 +132,12 @@ function asChosen(p: Picture): Picture {
   }
 }
 
-/** The files a picture's records name as pictures: each version's image, upscale and painted area. */
+/**
+ * The files a picture's records name as pictures: each version's image, upscale and painted area,
+ * and the render its face pass keeps.
+ */
 export const pictureImages = (p: Picture): string[] =>
-  [p, ...(p.edits ?? [])].flatMap((v) => [
+  picturesVersions(p).flatMap((v) => [
     v.file,
     v.upscaled,
     'mask' in v ? (v as PictureEdit).mask : undefined,

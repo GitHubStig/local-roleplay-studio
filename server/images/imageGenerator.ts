@@ -51,6 +51,16 @@ export interface EditRequest {
   mask?: string
   /** What to paint. */
   instruction: string
+  /**
+   * More pictures to paint from, inside `dir`, after the picture itself (images 2, 3…): a reference
+   * sheet, for the face pass. Only an edit model that takes them (`EditModelInfo.faces`) is given any.
+   */
+  references?: string[]
+  /**
+   * How much of the painted area is repainted, from 0 to 1: 1 (the default) from noise, less
+   * starting part-way from the picture (ComfyUI's denoise, mflux's `--strength`).
+   */
+  strength?: number
   seed: number
   /** Bits to quantize the weights to as they load, on mflux (Settings' `editQuantize`); none for full. */
   quantize?: Quantize

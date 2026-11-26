@@ -27,6 +27,16 @@ export type TextChoiceKept = Pick<SessionSettings, 'textModel' | 'thinking'>
 /** The Session settings that say which Image Model renders, and where it would rather. */
 export type ImageChoice = Pick<SessionSettings, 'imageModel' | 'steps' | 'imageBackend'>
 
+/** A render's face pass, as its job says it: whose faces, or why none were repainted. */
+export interface FacesStep {
+  /** Whose faces it repaints (while it runs), or repainted (once done). */
+  subjects: string[]
+  /** Why it left the picture as rendered: no one with a sheet shown, or no head found. */
+  skipped?: string
+  /** Who has a sheet and is shown, but whose head wasn't found, so wasn't repainted. */
+  missed?: string[]
+}
+
 export interface Job {
   id: string
   kind: JobKind
@@ -69,6 +79,11 @@ export interface Job {
   clip?: ClipOrder
   /** A reference sheet's: whose, by the Subject's name in the Look. */
   sheet?: { subject: string }
+  /**
+   * A render's second step, once it's reached it, in a Session with reference sheets: whose faces
+   * it repaints (`subjects`), or why it saved the picture as rendered (`skipped`).
+   */
+  faces?: FacesStep
   /**
    * An export's folder, where its page is written (`exports/` and the Session's id): said once
    * it's done. What it writes was saved in the Session's folder as it was queued (`export.json`).

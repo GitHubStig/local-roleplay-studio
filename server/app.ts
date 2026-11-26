@@ -76,6 +76,7 @@ import { scenarioRoutes } from './scenario/routes.ts'
 import { sessionRoutes } from './sessionRoutes.ts'
 import { pictureRoutes } from './pictureRoutes.ts'
 import { sheetRoutes } from './sheets/routes.ts'
+import { twoPasses } from './faces/facePass.ts'
 import { chainRoutes } from './chain/routes.ts'
 import { storyboardRoutes } from './storyboard/routes.ts'
 
@@ -248,6 +249,15 @@ export function createHandler(
   /** The Backend a heavy job goes to as Settings are now (`backendOf`). */
   const heavyBackend = async (job: HeavyJob) => backendOf(job, await deps.settings.load(), detected)
 
+  // Faces from reference sheets, where heads can be found: two passes, the plan's default.
+  const faces = deps.headFinder && twoPasses({
+    store: deps.sessions,
+    imageGenerator: deps.imageGenerator,
+    heads: deps.headFinder,
+    renderQueue,
+    settings: () => deps.settings.load(),
+    backendOf: heavyBackend,
+  })
   const frameDeps = (session: Session): FrameDeps => ({
     store: deps.sessions,
     textModel: deps.textModel(textChoice(session)),
@@ -256,6 +266,7 @@ export function createHandler(
     previews,
     settings: () => deps.settings.load(),
     backendOf: heavyBackend,
+    ...(faces && { faces }),
   })
 
   /**
@@ -349,6 +360,7 @@ export function createHandler(
     previews,
     settings: () => deps.settings.load(),
     backendOf: heavyBackend,
+    ...(faces && { faces }),
     roleplayModel: deps.roleplayModel(textChoice(session)),
     voice: deps.voice,
     scene: deps.scene,

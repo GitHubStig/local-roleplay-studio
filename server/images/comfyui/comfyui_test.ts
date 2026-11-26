@@ -130,6 +130,7 @@ async function comfyEdit(
   dir: string,
   model: EditRequest['model'],
   mask?: Uint8Array<ArrayBuffer>,
+  more: Partial<EditRequest> = {},
 ) {
   const comfy = fakeComfyUI({ files: ALL_FILES })
   try {
@@ -147,6 +148,7 @@ async function comfyEdit(
         seed: 7,
         dir,
         name: 'edit-0-test',
+        ...more,
       },
       new AbortController().signal,
     )
@@ -198,6 +200,24 @@ Deno.test('A ComfyUI edit repaints only the painted area, on the Image Model’s
       uploads.slice(2).map((u) => u.name).sort(),
       uploads.slice(0, 2).map((u) => u.name).sort(),
     )
+  }))
+
+Deno.test("A face pass's edit takes its reference as image 2, and starts part-way when told", () =>
+  withTempDir(async (dir) => {
+    const view = new Uint8Array(500)
+    view.set(pngHeader(40, 50))
+    await Deno.writeFile(join(dir, 'sheet-view2.png'), view)
+    const { workflow: w, uploads } = await comfyEdit(
+      dir,
+      'qwen-image-2.1-edit',
+      await paintedMask(100, 50, [10, 10, 30, 30]),
+      { references: ['sheet-view2.png'], strength: 0.92 },
+    )
+    // The picture, then the reference, then the painted area.
+    assertEquals(w.reference2.inputs.image, `${uploads[1].name} [temp]`)
+    assertEquals(w.conditioning.inputs['images.image_2'], ['reference2', 0])
+    assertEquals(w.mask.inputs.image, `${uploads[2].name} [temp]`)
+    assertEquals(w.sampler.inputs.denoise, 0.92)
   }))
 
 Deno.test('FIBO 2.0 Dev renders prose prompts with its native encoder and sampling defaults', () =>

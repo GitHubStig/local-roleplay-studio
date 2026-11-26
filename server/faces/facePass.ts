@@ -1,0 +1,226 @@
+/**
+ * The face pass (docs/reference-sheets-plans.md): after a Frame renders, before it's saved as the
+ * Original, each face it shows of a Subject with a reference sheet is repainted from that sheet.
+ * How the faces come from the sheets is one interface (`FaceWay`), as the plan keeps one pass
+ * possible; two passes is the default, and the only way built: one pass would hand the sheets to
+ * the render itself, which needs an Image Model that takes references.
+ *
+ * Two passes: find the heads of the Subjects shown, by name and identity, with which way each is
+ * turned; then an edit each (stage 0b: one edit for two lost a scowl and a turn of the head), its
+ * area the head's box grown by a fifth and softened, its instruction naming the Frame's expression
+ * sentence, and its reference the one view of the sheet nearest the head's turn, mirrored where it
+ * faces the other way. One view, not the sheet whole as stage 0 settled: on 2026-11-26 the whole
+ * sheet left a face that barely moves (Elara) as rendered, where one view gave it the sheet's face
+ * on every seed; and one head can't paste the sheet's three in, so the heads aren't counted after
+ * (docs/bench/reference-sheets/2026-11-26/).
+ */
+import { join } from '@std/path'
+import type { Backend } from '../../shared/backends.ts'
+import type { FacePass } from '../../shared/pictures.ts'
+import type { FacesStep } from '../../shared/jobs.ts'
+import type { ProgressEvent } from '../../shared/events.ts'
+import type { Session, Sheet, SheetPicture } from '../../shared/session.ts'
+import type { Settings } from '../../shared/settings.ts'
+import { EDIT_MODELS, type EditModel } from '../../shared/images.ts'
+import type { Head, HeadFinder, HeadRequest } from '../heads/heads.ts'
+import type { ImageGenerator } from '../images/imageGenerator.ts'
+import { editJob, type HeavyJob } from '../machine.ts'
+import { pngSize } from '../png.ts'
+import { loadPrompt } from '../promptFiles.ts'
+import { RenderQueue } from '../renderQueue.ts'
+import type { SessionStore } from '../session.ts'
+import { DEFAULT_SETTINGS } from '../settings.ts'
+import { headArea } from './area.ts'
+
+/** A Subject the Frame shows that has a sheet to repaint it from: ticked, and made. */
+export interface ShownSheet {
+  subject: string
+  identity: string
+  made: SheetPicture
+}
+
+/** What a face pass is asked to do: a Frame's render, and who it shows with a sheet. */
+export interface FacesRequest {
+  session: Session
+  index: number
+  /** The render, a PNG in the Session's folder. */
+  file: string
+  /** The seed it was rendered with: the first edit is one on (ADR 0011). */
+  seed: number
+  sheets: ShownSheet[]
+  /** The Frame's expression sentence, '' when not known. */
+  expression: string
+}
+
+/** What a face pass did: the picture with its faces repainted, or why it left it as rendered. */
+export type FacesDone =
+  | { faced: { file: string; pass: Omit<FacePass, 'without' | 'other'>; missed: string[] } }
+  | { skipped: string }
+
+/** Its progress: the render's own events, and the step's (`faces`) as it begins. */
+export type FacesEmit = (event: ProgressEvent) => void
+
+/** How a Frame's faces come from their sheets (the plan's "one interface with both ways"). */
+export interface FaceWay {
+  /** After the render: repaints the faces, or says why it didn't. Removes what it made on failure. */
+  repaint(req: FacesRequest, emit: FacesEmit, signal: AbortSignal): Promise<FacesDone>
+}
+
+/** The sheets of the Subjects a Frame shows that its face pass uses: ticked and made, in its order. */
+export function shownSheets(sheets: readonly Sheet[], shown: readonly string[]): ShownSheet[] {
+  return shown.flatMap((name) => {
+    const sheet = sheets.find((s) => s.subject === name && s.ticked && s.made)
+    return sheet ? [{ subject: name, identity: sheet.identity, made: sheet.made! }] : []
+  })
+}
+
+/** Why a Frame's faces are left as rendered when it shows no one with a sheet. */
+export const NO_ONE_WITH_A_SHEET = 'No one with a sheet in it: saved as rendered.'
+
+export interface TwoPassDeps {
+  store: SessionStore
+  imageGenerator: ImageGenerator
+  heads: HeadFinder
+  renderQueue?: RenderQueue
+  settings?: () => Promise<Settings>
+  backendOf?: (job: HeavyJob) => Promise<Backend | undefined>
+  /** How much of each head is repainted: the face edit model's own (`faceStrength`) unless a bench tries another. */
+  strength?: number
+}
+
+const seconds = (start: number) => Math.round((performance.now() - start) / 100) / 10
+
+/** Two passes: the render, then an edit per face (the default, and the only way built). */
+export function twoPasses(deps: TwoPassDeps): FaceWay {
+  return {
+    async repaint(req, emit, signal) {
+      const now = deps.settings ? await deps.settings() : DEFAULT_SETTINGS
+      const model = now.faceEditModel
+      const job = editJob(model)
+      const backend = await deps.backendOf?.(job)
+      const dir = deps.store.dir(req.session.id)
+      const ask: Omit<HeadRequest, 'image'> = { dir, ...(backend && { backend }) }
+      const step = (faces: FacesStep) => emit({ type: 'faces', faces })
+      // The masks and the edits on the way, removed once the pass ends; the last edit is kept.
+      const made: string[] = []
+      let picture = req.file
+      const release = await (deps.renderQueue ?? new RenderQueue()).acquire(signal, () => {
+        emit({ type: 'phase', phase: 'queued' })
+      }, { job })
+      try {
+        step({ subjects: req.sheets.map((s) => s.subject) })
+        emit({ type: 'phase', phase: 'faces' })
+        let started = performance.now()
+        const found: { sheet: ShownSheet; head: Head }[] = []
+        for (const sheet of req.sheets) {
+          const heads = await deps.heads.find(
+            { ...ask, image: req.file, who: { name: sheet.subject, identity: sheet.identity } },
+            signal,
+          )
+          const head = pickHead(heads, sheet.subject, found.map((f) => f.head))
+          if (head) found.push({ sheet, head })
+        }
+        const find = seconds(started)
+        const missed = req.sheets.filter((s) => !found.some((f) => f.sheet === s))
+          .map((s) => s.subject)
+        if (!found.length) {
+          const names = new Intl.ListFormat('en', { type: 'disjunction' }).format(missed)
+          return { skipped: `No head found of ${names}: saved as rendered.` }
+        }
+        step({ subjects: found.map((f) => f.sheet.subject) })
+        started = performance.now()
+        const size = pngSize(await Deno.readFile(join(dir, req.file)))
+        let seed = req.seed
+        for (const [i, { sheet, head }] of found.entries()) {
+          const mask = `mask-${req.index}-${crypto.randomUUID().slice(0, 8)}.png`
+          await Deno.writeFile(join(dir, mask), await headArea(head.box, size))
+          made.push(mask)
+          seed += 1
+          const file = await deps.imageGenerator.edit(
+            {
+              model,
+              ...(backend && { backend }),
+              image: picture,
+              mask,
+              references: [viewFor(sheet.made, head.facing)],
+              instruction: await faceInstruction(sheet.subject, req.expression),
+              seed,
+              strength: deps.strength ?? faceStrength(model),
+              quantize: now.editQuantize,
+              dir,
+              name: `frame-${req.index}-${crypto.randomUUID().slice(0, 8)}`,
+            },
+            signal,
+            // Every edit's steps as one bar.
+            (done, total) =>
+              emit({ type: 'progress', step: i * total + done, total: found.length * total }),
+            () => emit({ type: 'phase', phase: 'download' }),
+          )
+          if (picture !== req.file) made.push(picture)
+          picture = file
+          signal.throwIfAborted()
+          emit({ type: 'phase', phase: 'faces' })
+        }
+        return {
+          faced: {
+            file: picture,
+            pass: {
+              subjects: found.map((f) => f.sheet.subject),
+              seed,
+              timings: { find, faces: seconds(started) },
+            },
+            missed,
+          },
+        }
+      } catch (err) {
+        // The faces so far go with it; the render stays, as its caller saved it.
+        if (picture !== req.file) made.push(picture)
+        throw err
+      } finally {
+        await Promise.all(made.map((f) => Deno.remove(join(dir, f)).catch(() => {})))
+        release()
+      }
+    },
+  }
+}
+
+/**
+ * The head found for `subject`: one labelled with its name if any, else the first, never one
+ * already taken by a Subject before it (two alike can both be found for one of them).
+ */
+export function pickHead(heads: Head[], subject: string, taken: Head[]): Head | undefined {
+  const free = heads.filter((h) => !taken.some((t) => overlap(t.box, h.box) > 0.5))
+  const first = subject.split(/\s+/)[0].toLowerCase()
+  return free.find((h) => h.label.toLowerCase().includes(first)) ?? free[0]
+}
+
+/** How much two boxes overlap: their intersection over their union. */
+function overlap(a: Head['box'], b: Head['box']): number {
+  const w = Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0]))
+  const h = Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1]))
+  const area = (x: Head['box']) => (x[2] - x[0]) * (x[3] - x[1])
+  const both = w * h
+  return both / (area(a) + area(b) - both)
+}
+
+/**
+ * The view of a sheet nearest a head's turn, for the pass done again: the sheet's views are, left
+ * to right, the front, a three-quarter turn and a profile, both facing left, so a head facing right
+ * takes a mirrored one. A turn not said takes the three-quarter view, as the bench did.
+ */
+export function viewFor(made: SheetPicture, facing: Head['facing']): string {
+  const i = facing === 'front' ? 0 : facing?.startsWith('profile') ? 2 : 1
+  return facing?.endsWith('right') ? made.mirrored[i] : made.views[i]
+}
+
+/** How much of each head edit model `model` repaints in the face pass, as measured for it; all of it for one not measured. */
+export function faceStrength(model: EditModel): number {
+  const faces = EDIT_MODELS.find((m) => m.id === model)?.faces
+  return typeof faces === 'object' ? faces.strength : 1
+}
+
+/** The face pass's instruction for one Subject: its expression named, where it's known. */
+export const faceInstruction = (name: string, expression: string): Promise<string> =>
+  expression.trim()
+    ? loadPrompt('faces/face', { name, expression: expression.trim().replace(/\.$/, '') })
+    : loadPrompt('faces/face-unknown', { name })

@@ -261,8 +261,8 @@ const sheetsOn = computed(() => !!form.value?.features.sheets && sheetsAvailabil
 /** The edit models for the face pass: those that can't do it greyed, saying why. */
 const faceEditModels = computed(() =>
   editModelsSorted.value.map((c) => {
-    const faces = options.value?.editModels.find((m) => m.id === c.id)?.faces ?? true
-    return { ...c, why: faces === true ? '' : faces }
+    const faces = options.value?.editModels.find((m) => m.id === c.id)?.faces
+    return { ...c, why: typeof faces === 'string' ? faces : '' }
   })
 )
 /** Where the face pass goes: where edits go, by its own edit model. */

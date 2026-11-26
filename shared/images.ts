@@ -60,7 +60,10 @@ export const EDIT_MODELS = [
     id: 'qwen-image-2.1-edit',
     label: 'Qwen-Image 2.1 Edit',
     backends: ['mflux', 'comfyui'],
-    faces: true,
+    // Started part-way from the render: from noise it turned a head in profile to face the viewer
+    // and grew some heads; at 0.92 a face that barely moves stayed as rendered (2026-11-26, the PC,
+    // docs/bench/reference-sheets/2026-11-26/).
+    faces: { strength: 0.96 },
     prompting: 'Takes an instruction: say what to paint there, terse or described.',
   },
   {
@@ -97,10 +100,12 @@ export const EDIT_MODELS = [
   label: string
   backends: readonly ImageBackendKind[]
   /**
-   * Whether it repaints faces from a reference sheet (the face pass), or why not: only Qwen-Image
-   * 2.1's for now, the best of 2026-11-22's face edits, and its Qwen3-VL finds the heads.
+   * How it repaints faces from a reference sheet (the face pass), or why it doesn't: only
+   * Qwen-Image 2.1's for now, the best of 2026-11-22's face edits, and its Qwen3-VL finds the heads.
+   * `strength`: how much of each head it repaints, from 0 to 1 (`EditRequest.strength`), measured
+   * for this model; a model added here needs its own.
    */
-  faces: true | string
+  faces: { strength: number } | string
   /** How it likes to be told, shown under the instruction (research/image-models.md). */
   prompting: string
 }[]
