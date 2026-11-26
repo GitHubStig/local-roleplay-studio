@@ -127,7 +127,7 @@ export interface AppDeps {
   music?: MusicGenerator
   /** Embeds pictures for the Compare dialog's style scores; without it, there are none. */
   style?: StyleEmbedder
-  /** Finds and counts heads in a picture, for reference sheets' face pass; without it, no sheets. */
+  /** Finds heads in a picture for the face pass, and looks sheets over; without it, no sheets. */
   headFinder?: HeadFinder
   /**
    * Which extras this machine can run (`detectFeatures`, at startup). Left out, those whose

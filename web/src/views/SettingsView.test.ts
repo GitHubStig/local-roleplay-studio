@@ -60,6 +60,14 @@ const options: api.SettingsOptions = {
   imageModels: {
     mflux: [
       {
+        id: 'fibo-2.0-turbo',
+        label: 'FIBO 2.0 Turbo',
+        defaultSteps: 4,
+        stepCache: false,
+        quantize: true,
+        float16: true,
+      },
+      {
         id: 'z-image-turbo',
         label: 'Z-Image Turbo',
         defaultSteps: 9,
@@ -762,7 +770,8 @@ describe('SettingsView', () => {
       expect(labels).toEqual(sorted(labels))
     }
     // The fixture lists Z-Image Turbo before FLUX.2 Klein 4B, so this isn't the lists' own order.
-    expect(labelsOf('[data-image-model]')[0]).toBe('FLUX.2 Klein 4B')
+    const labels = labelsOf('[data-image-model]')
+    expect(labels.indexOf('FLUX.2 Klein 4B')).toBeLessThan(labels.indexOf('Z-Image Turbo'))
   })
 
   it("shows music's defaults only while Music is on, and saves them", async () => {
@@ -798,6 +807,15 @@ describe('SettingsView', () => {
     const sheets = panel.find<HTMLSelectElement>('[data-sheet-image-model]')
     expect(sheets.element.value).toBe('')
     expect(sheets.find('option').text()).toBe("The Session's Image Model")
+    // A model that drew unfit sheets in the bench says so, in the list and under it once picked.
+    expect(sheets.findAll('option').map((o) => o.text())).toContain(
+      'FIBO 2.0 Turbo (wrote a name on 2 sheets of 6)',
+    )
+    expect(panel.find('[data-sheet-model-flaw]').exists()).toBe(false)
+    await sheets.setValue('fibo-2.0-turbo')
+    expect(panel.find('[data-sheet-model-flaw]').text()).toBe(
+      'In a bench, this one wrote a name on 2 sheets of 6.',
+    )
     await sheets.setValue('qwen-image-2.1')
     await panel.find('[data-feature="sheets"] input').setValue(false)
     await wrapper.find('form').trigger('submit')

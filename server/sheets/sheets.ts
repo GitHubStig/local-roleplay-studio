@@ -165,7 +165,8 @@ export async function makeSheet(
 
 /**
  * A sheet's three views, cut apart (left to right: front, three-quarter, profile) and each
- * mirrored, for the face pass's redo with one view: PNGs beside it, named after it.
+ * mirrored, for the face pass to repaint each head from the one nearest its turn: PNGs beside it,
+ * named after it.
  */
 export async function cutSheet(
   dir: string,

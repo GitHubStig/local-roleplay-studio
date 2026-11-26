@@ -437,6 +437,11 @@ What the stages left open, each with a line in [open-threads.md](../open-threads
 - **The edit's step cache** on the PC (`QwenImage21Cache`) would about halve its ~54 s face edit, if it keeps the faces as they are; mflux's `--use-step-cache` is untried for edits.
 - **An object's sheet in the face pass**: the instruction speaks of a face and hair, and stage 0 found an object needs its state named. Untried through the app.
 - **A job whose ComfyUI connection dies after a sleep**: a bench waited for ever on a ComfyUI that had forgotten its prompt; whether the app's jobs hang the same way is untried.
+- **A Session made without sheets can't have them** (stage 3): a Roleplay's Restart, back to its Cast review, could offer them.
+- **Start's menu doesn't grey the switch when the ComfyUI lacks Qwen-Image 2.1's files** (stage 3): Settings' check finds them missing, but Start's menu knows only whether the Feature can run, so the first sheet fails instead.
+- **Kael's head a little tall** on one seed of three, at every strength (stage 4). Watch in play.
+- **Not yet run through the app**: a Storyboard's sheets, face pass and edits (the same code, covered by tests); the PC's own run of the app (the Mac sent its work there); sheets rendered on mflux and then checked there (the check ran on mflux only on the PC's sheets).
+- **The check's misses**: a small signature in a corner of one sheet (stage 6), on a sheet unfit anyway. Writing that small may get through.
 - **A better reference**, as models change (a layout that suits a model, a transparent background), and **a 3D figure as the reference** (TripoSplat or LiTo, rendered at each head's own angle): the owner's ideas, untried.
 
 ## Bringing a Roleplay's Look up to date with the story (parked)

@@ -1,7 +1,7 @@
 <!--
 The head finder's question for one Subject of a Look, by its name and identity, to the Qwen3-VL in
 Qwen-Image 2.1 (`server/heads/`): where its head is, for the face pass to repaint, and which way
-it's turned, for the face pass's redo with one view of its sheet (ADR 0045).
+it's turned, for the face pass to take the view of its sheet nearest that turn (ADR 0045).
 One wording for a person, a creature or a thing, as a Look doesn't say which. The bench's, with
 `facing` from its views test (docs/bench/reference-sheets/2026-11-25/).
 

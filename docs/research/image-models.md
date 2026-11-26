@@ -391,6 +391,10 @@ What fixed it: the picture scaled to a 1024² budget, each side a multiple of 32
 
 Both also moved the camera when told to ("seen from a low angle: the camera near the floor, looking up at them"), as mflux's did, the people and the room kept: [the camera bench](../bench/camera/README.md).
 
+## Qwen-Image 2.1 Turbo Edit often draws nothing in a painted area (2026-11-26, Windows PC, from the Mac)
+
+Found while benching the face pass after an edit ([bench](../bench/reference-sheets/2026-11-26/edits/README.md)), in the tavern's Frames through the app: a red cloth painted on the counter and a grey woollen cap painted over Kael's head came back from the Turbo Edit (~17 s) all but unchanged, where Qwen-Image 2.1 Edit drew both. Its camera moves (the whole picture repainted) worked. Two edits, one seed each: not yet a finding about the Turbo as a whole, but worth checking before it's anyone's default for painted areas.
+
 ## An edit on its picture's own seed replays its noise (2026-11-22, Windows PC, from the Mac)
 
 ComfyUI draws a sampler's starting noise from the seed on the CPU, so the same seed at the same latent size gives the same noise on any machine. A Qwen-Image 2.1 edit given that seed and size starts from exactly the noise its picture was made from, with the picture spliced in as a reference, and converges back onto it: the picture comes back over-sharpened and garish, the instruction having no effect. Found while trying reference portraits on ComfyUI 0.46.2, first taken for a regression; the explanation is in ComfyUI's [#16435](https://github.com/Comfy-Org/ComfyUI/issues/16435) (a comment of 2026-11-20), and [#16607](https://github.com/Comfy-Org/ComfyUI/issues/16607) calls it "noise replay".

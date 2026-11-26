@@ -100,6 +100,10 @@ At 832×1216, wall clock from cache including the model load, unless it says oth
 
 Every edit is pasted back through the painted mask, so nothing outside it changes. Several areas can be painted in one edit; each is given the whole instruction, so FLUX.3 needs telling which goes where ("… on the left, and … on the right"). The PC's times are from cold at 832×1216 on ComfyUI 0.43.2 with Comfy Kitchen's int8 attention, which takes 23–29% off an edit's sampling (2026-11-01).
 
+### Reference sheets
+
+The face pass ([ADR 0045](adr/0045-faces-are-repainted-from-a-reference-sheet.md)) needs Qwen-Image 2.1, on either backend: its edit (**Qwen-Image 2.1 Edit**, started part-way at strength 0.96) repaints each face, and its text encoder, Qwen3-VL, finds the heads and checks each sheet. The other edit models repainted faces worse, or weren't tried. A face edit takes ~54 s on the PC, ~200 s on the Mac; finding a head ~7 s on either; checking a sheet ~15 s on the PC, 16–19 s on the Mac. **Sheets can come from any Image Model**: Qwen-Image 2.1 and its Turbo, Krea 2 + LoRA, FLUX.3 Klein and Z-Image Turbo drew six fit sheets of six; FIBO 2.0 Turbo wrote names on 2 and Anima Turbo's views were wrong on 3 (2026-11-26, the PC: [bench](bench/reference-sheets/2026-11-26/check/README.md)).
+
 ### Upscaler
 
 **SeedVR2 7B** (`seedvr2-7b`; 3B in **Settings → Upscaler**), to 2048 px on the long side. On the Mac (mflux, `--low-ram`): 57 s and 20.1 GB peak from 1024² (0.22). On the PC (ComfyUI, fp8, colour correction `lab`): 11–14 s from 832×1216, about 5× the Mac, and **Settings → Upscale with** can send a Mac's upscales there.
