@@ -1,6 +1,7 @@
 /**
- * The face pass (docs/reference-sheets-plans.md): after a Frame renders, before it's saved as the
- * Original, each face it shows of a Subject with a reference sheet is repainted from that sheet.
+ * The face pass (docs/reference-sheets-plans.md): after a Frame renders, or its picture is edited,
+ * each face it shows of a Subject with a reference sheet is repainted from that sheet (for an edit
+ * of a painted area, only the heads the area touches, told to keep what the edit changed).
  * How the faces come from the sheets is one interface (`FaceWay`), as the plan keeps one pass
  * possible; two passes is the default, and the only way built: one pass would hand the sheets to
  * the render itself, which needs an Image Model that takes references.
@@ -8,7 +9,7 @@
  * Two passes: find the heads of the Subjects shown, by name and identity, with which way each is
  * turned; then an edit each (stage 0b: one edit for two lost a scowl and a turn of the head), its
  * area the head's box grown by a fifth and softened, its instruction naming the Frame's expression
- * sentence, and its reference the one view of the sheet nearest the head's turn, mirrored where it
+ * sentence (or an edit's change), and its reference the one view of the sheet nearest the head's turn, mirrored where it
  * faces the other way. One view, not the sheet whole as stage 0 settled: on 2026-11-26 the whole
  * sheet left a face that barely moves (Elara) as rendered, where one view gave it the sheet's face
  * on every seed; and one head can't paste the sheet's three in, so the heads aren't counted after

@@ -167,7 +167,7 @@ server/           Deno API: the app, Sessions, Settings, the job queue, what all
   music/          a Roleplay's music: comfyui/ (ACE-Step 1.5, its workflow in comfyui/workflows/)
   sheets/         reference sheets of a Look's Subjects: made, redone, changed and ticked
   heads/          finding heads in a picture, by Qwen-Image 2.1's Qwen3-VL on mflux or a ComfyUI
-  faces/          the face pass: each face a render shows repainted from its sheet
+  faces/          the face pass: each face a render or an edit shows repainted from its sheet
   3d/             SHARP scenes, TripoSplat and LiTo figures
   style/          Compare's style scores: the embedder, the measures and the job
   export/         the Compare table as a page of its own, its pictures as WebP

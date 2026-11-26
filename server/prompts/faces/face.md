@@ -1,8 +1,9 @@
 <!--
 The face pass's instruction to its edit model (Qwen-Image 2.1 Edit), one edit per Subject a
-picture shows with a reference sheet (`server/faces/`, docs/reference-sheets-plans.md): image 1 is
-the picture, its painted area that Subject's head (the box grown by a fifth, its edge softened),
-and image 2 the Subject's sheet, whole (or one view of it, when the pass is done again). The words
+picture shows with a reference sheet (`server/faces/`, docs/reference-sheets-plans.md), after a
+render or after an edit of the whole picture (a camera move; an edit of a painted area is told
+`face-edited.md`): image 1 is the picture, its painted area that Subject's head (the box grown by a
+fifth, its edge softened), and image 2 the view of the Subject's sheet nearest the head's turn. The words
 are the 2026-11-25 bench's for an edit each (docs/bench/reference-sheets/2026-11-25/scripts/b0.py,
 "an edit each kept the scowl"), with "and tilted" from its steep angles (seed2.py), and the
 expression named, as "the same expression" alone lost it (stage 0).

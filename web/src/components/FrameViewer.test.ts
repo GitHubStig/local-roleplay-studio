@@ -373,6 +373,16 @@ describe('FrameViewer', () => {
     expect(wrapper.emitted('dropJob')).toEqual([[failed]])
   })
 
+  it('shows an edit on its faces as the version it landed as, not as one still being made', async () => {
+    const onFaces = editJob('running', { phase: 'faces', faces: { subjects: ['Ace'] } })
+    const wrapper = mountIt({ jobs: [onFaces] })
+    await flushPromises()
+    // The Original and the two edits: the landed edit isn't listed again as Edit 3.
+    expect(versions(wrapper).map((v) => v.text())).not.toContain('Edit 3')
+    expect(versions(wrapper)).toHaveLength(3)
+    expect(wrapper.find('[data-viewer-caption]').text()).not.toContain('Waiting its turn')
+  })
+
   it('shows a picture with no edits as it was, upscaled, without versions', async () => {
     const plain = [{
       index: 0,

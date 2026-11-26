@@ -15,7 +15,7 @@ import type { Availabilities } from '../../shared/features.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
 import encodePng from '@jsquash/png/encode.js'
 import { Uint8ArrayReader, ZipReader } from '@zip-js/zip-js'
-import { clonedIn } from '../appTesting.ts'
+import { clonedIn, importedIn } from '../appTesting.ts'
 import { KEEP_ALL } from '../../shared/keep.ts'
 
 const on = { available: true }
@@ -338,7 +338,7 @@ Deno.test('An edit whose painted area touches no face keeps the faces it had', (
 
 Deno.test("Export and Clone carry the faces and the pictures before them, a render's and an edit's", () =>
   withTempDir(async (root) => {
-    const { call } = await rendered(root, 3)
+    const { call, handler } = await rendered(root, 3)
     await call('POST', '/api/sessions/s1/jobs', {
       kind: 'edit',
       frameIndex: 0,
@@ -349,13 +349,30 @@ Deno.test("Export and Clone carry the faces and the pictures before them, a rend
     const edit = picture.edits![0]
     const both = [picture.file, picture.faces!.other!.file, edit.file, edit.faces!.other!.file]
 
-    const zipped = async (query = '') => {
-      const res = await call('GET', `/api/sessions/s1/export${query}`)
-      const zip = new Uint8Array(await res.arrayBuffer())
-      return (await new ZipReader(new Uint8ArrayReader(zip)).getEntries()).map((e) => e.filename)
-    }
+    const exported = async (query = '') =>
+      new Uint8Array(await (await call('GET', `/api/sessions/s1/export${query}`)).arrayBuffer())
+    const zipped = async (query = '') =>
+      (await new ZipReader(new Uint8ArrayReader(await exported(query))).getEntries())
+        .map((e) => e.filename)
     const all = await zipped()
     for (const file of both) assert(all.includes(file), file)
+
+    // Imported, the same picture, its files there.
+    const imported = await importedIn(
+      await handler(
+        new Request('http://localhost/api/sessions/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/zip' },
+          body: await exported(),
+        }),
+      ),
+    )
+    const back = (await getSession(call, 'storyboard', imported.id)).frames[0].pictures[0]
+    assertEquals(back, picture)
+    const unpacked = (await Array.fromAsync(Deno.readDir(`${root}/${imported.id}`))).map((e) =>
+      e.name
+    )
+    for (const file of both) assert(unpacked.includes(file), file)
 
     const made = await clonedIn(await call('POST', '/api/sessions/s1/clone', {}))
     const copy = (await getSession(call, 'storyboard', made.id)).frames[0].pictures[0]
