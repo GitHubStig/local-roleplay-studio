@@ -7,13 +7,13 @@ Started 2026-11-25, from the owner's points after the sheet bench. Where things 
 ## What's settled
 
 - **Two passes, by default.** Each Frame renders from its Image Prompt as now, by any Image Model; then an edit per person repaints each face shown, with that one's sheet as a reference image (stage 0b: one edit for two lost expressions and turns). One pass (the sheet passed into the render) keeps the angle but pulls expression and clothes to the sheet's, so it isn't the default; it stays possible (open questions).
-- **The sheet is one render, passed whole**, by any Image Model, in the Look's style: three head-and-shoulders views on a plain dark backdrop.
+- **The sheet is one render**, by any Image Model, in the Look's style: three head-and-shoulders views on a plain dark backdrop, cut into its views (each mirrored) once made. **The face pass paints from one view**, the one nearest the head's turn (stage 4: the sheet whole left a face that barely moves as rendered, and with one head nothing can be pasted in).
 - **The face pass is Qwen-Image 2.1's edit**, on mflux and ComfyUI; FLUX.3 Klein's and FIBO 2.0 Edit Turbo's face edits were worse (2026-11-22).
 - **The heads are found by the Qwen3-VL Qwen-Image 2.1 already loads**: the only finder of five that found every head and says whose it is (stage 0).
 - **The instruction names what to keep**: the expression of each person, the state of an object, from the Frame's Image Prompt; "the same expression" alone loses it (stage 0).
-- **Checked after**: Qwen3-VL counts the heads, and a picture with more than before (a close-up can paste the sheet's three heads in) is done again with one view (stage 0).
+- **Started part-way from the render**: the face edit repaints each head at a strength measured for its model (0.96 for Qwen-Image 2.1 Edit, `EDIT_MODELS`' `faces.strength`), so the head keeps its size and turn (stage 4). The heads aren't counted after any more: stage 0's count caught the sheet's three heads pasted in, which one view can't do.
 - **The area is the head's box grown by a fifth, its edge softened**; neither a hard nor a soft edge showed a seam (stage 0).
-- **The cost**: find the heads, the face pass, count them: about 3.2× a plain render on the PC (17 s becomes ~54 s), 2.7× on the Mac (~86 s becomes ~236 s, its face edit ~140 s). Each further person in a Frame adds an edit, ~28 s on the PC, ~140 s on the Mac; another Image Model for the render adds nothing on the PC (stage 0b). So it's the player's choice, made before a Session starts.
+- **The cost**: find the heads, then an edit per person: on the PC ~63 s for one person after its 18 s render, ~124 s for two (stage 4, without the edit's step cache, which halved the bench's 28 s an edit); on the Mac 199 s an edit and ~16 GB (stage 4). So it's the player's choice, made before a Session starts.
 
 ## Stages
 
@@ -121,14 +121,31 @@ Built in four steps, each reviewed and committed on its own:
 - **A sheet per ticked Subject, made when the Look is**: a job in the Session's queue as soon as the Look exists, while the player reads the Beats or the Cast; A Storyboard's Write Frames waits for the sheets it needs; a Roleplay's Begin doesn't, as it writes only the opening Reply, and its first picture waits instead, if they're not done by then. **Shown in the Look, under each Subject's identity** (the owner, 2026-11-25), with Redo and Change… beneath; a picture among the Look & Cast panel's text, which the owner finds text-heavy.
 - **Redo and Change…** (the owner, 2026-11-25). Redo makes it again with another seed. **Change…** takes a note ("fewer scars", "green eyes", "longer hair"): the Text Model rewrites the Subject's identity with the change, and the sheet is made again from it, so the identity and the sheet always agree (a sheet with green eyes and an identity saying brown would fight in every Frame: the render draws brown, the face pass green). The rewritten identity is shown before the sheet is made. Three sheets to pick from was drawn and not chosen.
 
-### 4. The face pass after each render
+### 4. The face pass after each render: done (2026-11-26), but for its check against the Princess
 
-- **Part of the render job**, after the picture is made and before it's saved as the Original: find the heads of the ticked Subjects the Frame shows, by name and identity, then **an edit per person**, each with that one's sheet and the Frame's expression sentence quoted (stage 0b: one edit for two lost a scowl and a turn of the head, an edit each kept them). Seeded apart from the render (one more), as every picture made from a picture is.
-- **When a head isn't found, or the Frame shows no one with a sheet**, the render is saved as it is, and the job says so.
-- **The render without the face pass is kept** beside the Original. The picture shows a **"Faces from sheets" chip** (the owner, 2026-11-25), as it shows Edited now: clicking it says whose faces were repainted, holding it shows the render before (on a phone too, where a long press on the picture opens its menu, ADR 0039: the owner, 2026-11-25), and **Without the face pass** uses the render for that Frame. Not a version in the versions list, which would give every Frame an edit.
-- **Progress shows two steps** in one job, in the queue and on the picture: rendered, then faces (the owner agreed, 2026-11-25: there's no way round the second step). One job, so Cancel and the queue's order stay as they are; the render shows on the stage as soon as it's made, and the faces change when the pass is done. A Frame where no one with a sheet is found says the faces were skipped.
-- **Built behind one interface with both ways** (open questions: one pass stays possible), two passes the default.
-- **Checked against a story that loses a look** (the owner, 2026-11-25): in "The Princess and the Dark Lord" (the owner's Scenario, not in the repo), the princess's first picture had her hair loose, and the next few gave her the two side buns she's known for. The same replay (`deno task replay`, one seed, the same Messages; its file kept out of the repo, as the Scenario is) run twice, once with sheets and once without, and the pictures compared Frame by Frame for her hair and face. With sheets, her sheet is first steered with Change… to the buns, so she has them from the first picture: the player getting the sheet right before the story begins is the point.
+Built in `server/faces/` (the pass), with a reference and a strength on every edit (`EditRequest.references`, `strength`), and on screen as drawn in the mockups' section 4 and 7.
+
+- **Part of the render job**, after the picture is made: `replacePicture` saves the render first (so it shows at once, and the page reloads as the job reaches its faces), then the face pass (`FaceWay`, two passes the only way built; one pass would need an Image Model that takes references in the render) finds each ticked Subject the Frame shows by name and identity, and repaints each head in turn, seeded one on from what each is made from (the render's seed plus one for the first). The faces are then saved as the picture, the render kept beside them (`Picture.faces.other`, owned by the Pictures part, so served, counted, exported and cloned). Re-render runs it again; Undo and deleting a Frame remove both, as every picture file. A Frame showing no one with a sheet, or whose heads aren't found, keeps its render, and the job says so (`Job.faces`, "Faces skipped" on the picture until dismissed); a failure or Cancel during the pass keeps the render.
+- **One job in two steps**, on the picture's job line and in the Queue (`RenderSteps`): rendered by its model, then faces by name, or skipped and why, or whose head wasn't found.
+- **The chip** (`FacesChip`): "Faces from sheets", as Edited; clicking it says whose, with Without the face pass (`PUT …/pictures/:index/faces`), which swaps the two versions, each keeping what was made from it, and the chip then offers the faces back; holding it (a long press on a phone) shows the other version. Shown while the Original is what the Frame shows, not an edit.
+- **Waiting for the sheets**: a render needs the sheets (`jobKinds`), and a sheet is queued ahead of renders already waiting (a Roleplay begun before its Look was written queued its first render before them); a Storyboard's Write Frames waits for the sheets of the Subjects its Beats show (`whenGone`), saying whose.
+- **Edits from the faces** are seeded one on from the pass's last edit (`FacePass.seed`), so an edit never reuses its source's seed (ADR 0011). Chain from a Frame copies the picture in use, not the render kept beside it.
+- **Stored** in `session.json` v5, folded in as nothing had made one yet (the owner, 2026-11-26): `Picture.faces`, optional.
+
+**Decided on the way** (the owner, 2026-11-26, from the [bench](bench/reference-sheets/2026-11-26/README.md), two Frames of the tavern at three seeds each):
+
+- **One view of the sheet, not the whole sheet**: the whole sheet left Elara as rendered (blonde, against her sheet's dark hair) on every seed; one view gave her the sheet's face every time. Qwen3-VL read the heads' turns right.
+- **Started part-way, at 0.96**: from noise, Kael in profile looking at Elara turned to face the viewer on every seed, whatever the area, wording or reference, and his head grew on two seeds of three; at 0.96 he kept his look at her on every seed, and the faces still took their sheets'; at 0.92 Elara mostly stayed as rendered. The strength is the edit model's (`EDIT_MODELS`' `faces.strength`), measured for Qwen-Image 2.1 Edit: a workaround for today's model, to bench again when it changes; a model with none repaints from noise.
+- **No count of the heads after**, and so no redo: one view can't paste three heads in, and it flagged nothing in 30 passes here. It saves ~14 s a Frame.
+- **Tried and dropped**: the box grown by 8% with a hard edge, and an instruction keeping the head's size, place and turn: the same pictures as without them, seed for seed.
+
+**Found** (2026-11-26):
+
+- **Times**, the PC's ComfyUI sent from this Mac (Krea 2 + LoRA renders, Qwen-Image 2.1 int8): finding a head 5–9 s, an edit ~54 s, a Frame of one person ~63 s after its 18 s render, of two ~124 s. The bench's edits took 28 s with Qwen-Image 2.1's step cache (`QwenImage21Cache`), which the app's edit workflow doesn't have (open questions). This Mac's mflux 0.24.0 (8-bit): finding a head 7.4 s, an edit 199 s, its available memory down from 27.5 GB to 11.7 GB.
+- **The count never caught a pasted sheet** in 30 passes with the sheet whole, as the close-ups that paste one weren't among these Frames; it isn't needed with one view.
+- **Through the app it found two bugs** the tests then covered: a Roleplay's renders had no face pass (their deps are built apart), and a Roleplay begun at once rendered its first picture before its sheets.
+- **Kael's head is still a little tall on one seed** (10) at every strength. Watch for it in play.
+- **Not done**: the check against "The Princess and the Dark Lord" (the owner's replay file is needed, and stays out of the repo); a Storyboard through the running app (its face pass is the same code, checked by the tests); the PC's own run of the app (this Mac sent its work there); an object's sheet (the lantern) through the face pass, whose instruction speaks of a face and hair.
 
 ### 5. Edits, and the rest of the app it touches
 
@@ -164,6 +181,10 @@ The rest of the app (the owner, 2026-11-25: the Session manager wasn't in any st
 - **The style's scene in a sheet** (2e): a style sentence that names its light's source ("oil lamps") puts that source beside the face in a sheet's views. Whether it harms the face pass is untried (stage 4); if it does, a sheet could take only the style's medium, or stage 6's check of a sheet could catch it.
 - **Sheets on the Mac hold up the Cast review's Text Model** (2e): on one machine a Reply waits for the sheets' renders (112 s for two). Fine while the player reads the Cast; a Begin right away waits.
 - **Some faces barely move**: Elara's hardly changed in the face edits of the portrait and sheet trials, and Mira's (stage 0b); with the expression named Elara's moved more (stage 0), but less than Kael's; and a FLUX.3 Klein Kael kept most of his own (stage 0b). Watch for it in play.
+
+- **The edit's step cache** (stage 4): the app's face edits on the PC take ~54 s, the bench's took 28 s with `QwenImage21Cache`; adding it to the edit workflow would halve the face pass there, if it keeps the faces as they are. mflux has its own (`--use-step-cache`), untried for edits.
+- **An object's sheet in the face pass** (stage 4): the instruction speaks of "the face and hair"; stage 0 found an object needs its state named instead. Untried through the app.
+- **A job whose ComfyUI connection dies** (found 2026-11-26, not stage 4's own): the Mac slept mid-bench and the bench waited for ever on a ComfyUI that had forgotten its prompt. Whether the app's jobs hang the same way after a sleep is untried.
 
 ## Ideas for later
 

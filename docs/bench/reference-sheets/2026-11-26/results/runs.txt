@@ -1,0 +1,48 @@
+frame-0-2e9f0e84.png seed 10: frame-0-2e9f0e84-seed10.png, 77 s, {"subjects":["Kael"],"redone":[],"seed":10,"timings":{"find":9.3,"faces":53.5,"count":13.7}}, missed 
+frame-0-2e9f0e84.png seed 11: frame-0-2e9f0e84-seed11.png, 76 s, {"subjects":["Kael"],"redone":[],"seed":11,"timings":{"find":7,"faces":55.8,"count":13.7}}, missed 
+frame-1-b93b93ed.png seed 10: frame-1-b93b93ed-seed10.png, 139 s, {"subjects":["Kael","Elara"],"redone":[],"seed":11,"timings":{"find":13.7,"faces":110.8,"count":15}}, missed 
+frame-1-b93b93ed.png seed 11: frame-1-b93b93ed-seed11.png, 136 s, {"subjects":["Kael","Elara"],"redone":[],"seed":12,"timings":{"find":13,"faces":108.4,"count":14.3}}, missed 
+== tight
+frame-0-2e9f0e84.png seed 8: frame-0-2e9f0e84-tight-seed8.png, 75 s, {"subjects":["Kael"],"redone":[],"seed":8,"timings":{"find":7.6,"faces":54.3,"count":12.7}}, missed 
+frame-0-2e9f0e84.png seed 10: frame-0-2e9f0e84-tight-seed10.png, 72 s, {"subjects":["Kael"],"redone":[],"seed":10,"timings":{"find":5.9,"faces":53.2,"count":13.2}}, missed 
+frame-0-2e9f0e84.png seed 11: frame-0-2e9f0e84-tight-seed11.png, 71 s, {"subjects":["Kael"],"redone":[],"seed":11,"timings":{"find":5,"faces":53.5,"count":12.7}}, missed 
+frame-1-b93b93ed.png seed 8: frame-1-b93b93ed-tight-seed8.png, 131 s, {"subjects":["Kael","Elara"],"redone":[],"seed":9,"timings":{"find":9.8,"faces":106.6,"count":14.4}}, missed 
+frame-1-b93b93ed.png seed 10: frame-1-b93b93ed-tight-seed10.png, 132 s, {"subjects":["Kael","Elara"],"redone":[],"seed":11,"timings":{"find":9.7,"faces":109.8,"count":12.7}}, missed 
+frame-1-b93b93ed.png seed 11: frame-1-b93b93ed-tight-seed11.png, 130 s, {"subjects":["Kael","Elara"],"redone":[],"seed":12,"timings":{"find":9.7,"faces":106.3,"count":14}}, missed 
+== size
+frame-0-2e9f0e84.png seed 8: frame-0-2e9f0e84-size-seed8.png, 71 s, {"subjects":["Kael"],"redone":[],"seed":8,"timings":{"find":5,"faces":53.3,"count":12.5}}, missed 
+== size
+frame-0-2e9f0e84.png seed 8: frame-0-2e9f0e84-size-seed8.png, 73 s, {"subjects":["Kael"],"redone":[],"seed":8,"timings":{"find":7.8,"faces":53.5,"count":12.1}}, missed 
+frame-0-2e9f0e84.png seed 10: frame-0-2e9f0e84-size-seed10.png, 73 s, {"subjects":["Kael"],"redone":[],"seed":10,"timings":{"find":6.6,"faces":53.6,"count":12.8}}, missed 
+frame-0-2e9f0e84.png seed 11: frame-0-2e9f0e84-size-seed11.png, 73 s, {"subjects":["Kael"],"redone":[],"seed":11,"timings":{"find":6.8,"faces":53.5,"count":13}}, missed 
+frame-1-b93b93ed.png seed 8: frame-1-b93b93ed-size-seed8.png, 140 s, {"subjects":["Kael","Elara"],"redone":[],"seed":9,"timings":{"find":14.9,"faces":110.6,"count":14.1}}, missed 
+frame-1-b93b93ed.png seed 10: frame-1-b93b93ed-size-seed10.png, 135 s, {"subjects":["Kael","Elara"],"redone":[],"seed":11,"timings":{"find":13.3,"faces":107.3,"count":14.100000000000001}}, missed 
+frame-1-b93b93ed.png seed 11: frame-1-b93b93ed-size-seed11.png, 135 s, {"subjects":["Kael","Elara"],"redone":[],"seed":12,"timings":{"find":12.8,"faces":108,"count":14}}, missed 
+== both
+frame-0-2e9f0e84.png seed 8: frame-0-2e9f0e84-both-seed8.png, 72 s, {"subjects":["Kael"],"redone":[],"seed":8,"timings":{"find":6.3,"faces":53.3,"count":12.8}}, missed 
+frame-0-2e9f0e84.png seed 10: frame-0-2e9f0e84-both-seed10.png, 73 s, {"subjects":["Kael"],"redone":[],"seed":10,"timings":{"find":6.3,"faces":54,"count":12.6}}, missed 
+frame-0-2e9f0e84.png seed 11: frame-0-2e9f0e84-both-seed11.png, 72 s, {"subjects":["Kael"],"redone":[],"seed":11,"timings":{"find":6.2,"faces":53.5,"count":12.5}}, missed 
+frame-1-b93b93ed.png seed 8: frame-1-b93b93ed-both-seed8.png, 139 s, {"subjects":["Kael","Elara"],"redone":[],"seed":9,"timings":{"find":13.7,"faces":108.1,"count":17}}, missed 
+frame-1-b93b93ed.png seed 10: frame-1-b93b93ed-both-seed10.png, 138 s, {"subjects":["Kael","Elara"],"redone":[],"seed":11,"timings":{"find":12.9,"faces":110.2,"count":14.6}}, missed 
+frame-1-b93b93ed.png seed 11: frame-1-b93b93ed-both-seed11.png, 142 s, {"subjects":["Kael","Elara"],"redone":[],"seed":12,"timings":{"find":14.9,"faces":111.5,"count":15.3}}, missed 
+== view
+frame-0-2e9f0e84.png seed 8: frame-0-2e9f0e84-view-seed8.png, 80 s, {"subjects":["Kael"],"redone":[],"seed":8,"timings":{"find":7.1,"faces":54.3,"count":18.4}}, missed 
+frame-0-2e9f0e84.png seed 10: frame-0-2e9f0e84-view-seed10.png, 77 s, {"subjects":["Kael"],"redone":[],"seed":10,"timings":{"find":8.6,"faces":54.2,"count":14.7}}, missed 
+frame-0-2e9f0e84.png seed 11: frame-0-2e9f0e84-view-seed11.png, 76 s, {"subjects":["Kael"],"redone":[],"seed":11,"timings":{"find":6.7,"faces":56.4,"count":13.3}}, missed 
+frame-1-b93b93ed.png seed 8: frame-1-b93b93ed-view-seed8.png, 141 s, {"subjects":["Kael","Elara"],"redone":[],"seed":9,"timings":{"find":14.3,"faces":110.8,"count":15.899999999999999}}, missed 
+frame-1-b93b93ed.png seed 10: frame-1-b93b93ed-view-seed10.png, 135 s, {"subjects":["Kael","Elara"],"redone":[],"seed":11,"timings":{"find":13.8,"faces":107.1,"count":14.399999999999999}}, missed 
+frame-1-b93b93ed.png seed 11: frame-1-b93b93ed-view-seed11.png, 136 s, {"subjects":["Kael","Elara"],"redone":[],"seed":12,"timings":{"find":13.4,"faces":108.5,"count":14.3}}, missed 
+== s92
+frame-0-2e9f0e84.png seed 8: frame-0-2e9f0e84-s92-seed8.png, 63 s, {"subjects":["Kael"],"seed":8,"timings":{"find":7.4,"faces":55.2}}, missed 
+frame-0-2e9f0e84.png seed 10: frame-0-2e9f0e84-s92-seed10.png, 63 s, {"subjects":["Kael"],"seed":10,"timings":{"find":6.9,"faces":56.4}}, missed 
+frame-0-2e9f0e84.png seed 11: frame-0-2e9f0e84-s92-seed11.png, 61 s, {"subjects":["Kael"],"seed":11,"timings":{"find":6.8,"faces":54}}, missed 
+frame-1-b93b93ed.png seed 8: frame-1-b93b93ed-s92-seed8.png, 125 s, {"subjects":["Kael","Elara"],"seed":9,"timings":{"find":15.3,"faces":109.7}}, missed 
+frame-1-b93b93ed.png seed 10: frame-1-b93b93ed-s92-seed10.png, 125 s, {"subjects":["Kael","Elara"],"seed":11,"timings":{"find":14.8,"faces":110.7}}, missed 
+frame-1-b93b93ed.png seed 11: frame-1-b93b93ed-s92-seed11.png, 122 s, {"subjects":["Kael","Elara"],"seed":12,"timings":{"find":13.9,"faces":108.2}}, missed 
+== s96
+frame-0-2e9f0e84.png seed 8: frame-0-2e9f0e84-s96-seed8.png, 62 s, {"subjects":["Kael"],"seed":8,"timings":{"find":7.1,"faces":55.4}}, missed 
+frame-0-2e9f0e84.png seed 10: frame-0-2e9f0e84-s96-seed10.png, 65 s, {"subjects":["Kael"],"seed":10,"timings":{"find":8,"faces":56.6}}, missed 
+frame-0-2e9f0e84.png seed 11: frame-0-2e9f0e84-s96-seed11.png, 62 s, {"subjects":["Kael"],"seed":11,"timings":{"find":7.7,"faces":54.3}}, missed 
+frame-1-b93b93ed.png seed 8: frame-1-b93b93ed-s96-seed8.png, 125 s, {"subjects":["Kael","Elara"],"seed":9,"timings":{"find":14.4,"faces":110.5}}, missed 
+frame-1-b93b93ed.png seed 10: frame-1-b93b93ed-s96-seed10.png, 125 s, {"subjects":["Kael","Elara"],"seed":11,"timings":{"find":16.6,"faces":108.6}}, missed 
+frame-1-b93b93ed.png seed 11: frame-1-b93b93ed-s96-seed11.png, 121 s, {"subjects":["Kael","Elara"],"seed":12,"timings":{"find":12.5,"faces":108.3}}, missed 
