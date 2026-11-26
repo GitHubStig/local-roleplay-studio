@@ -1,5 +1,5 @@
 {
-  "_note": "Qwen-Image 2.1 editing a picture (ADR 0021), from ComfyUI's template image_qwen_image_2_1_image_edit (25 steps, CFG 1, euler, simple; the reference at a 1024² pixel budget, resolution 1024, as ComfyUI sizes it; the template starts at 0, its own size, which came out over-sharpened and grainy wherever the picture was repainted, docs/research/image-models.md), without its prompt enhancer, on Qwen-Image 2.1's own files. The picture is the reference (TextEncodeQwenImage21). The painted area is the latent's noise mask: the sampler repaints only it, the picture's own latent holding the rest, so the edit lands where it's painted; the picture is then pasted back outside it (ImageCompositeMasked), so nothing else moves. With nothing painted, comfyui.ts drops mask, encode, masked and composite, and the whole picture is repainted. $names are filled in by server/images/comfyui/comfyui.ts. Attention is Comfy Kitchen's int8 (ModelAttentionBackend), as Ming-Image's template has it: less time sampling on an NVIDIA card (docs/research/image-models.md), PyTorch's attention where it can't run, as on a Mac. The picture is first scaled to that budget ($fitWidth × $fitHeight, worked out in comfyui.ts as mflux does) and encoded as the canvas, so the painted area's surroundings are the picture; the result is scaled back to the picture's size ($width × $height) before it is pasted back or saved.",
+  "_note": "Qwen-Image 2.1 editing a picture (ADR 0021), from ComfyUI's template image_qwen_image_2_1_image_edit (25 steps, CFG 1, euler, simple; the reference at a 1024² pixel budget, resolution 1024, as ComfyUI sizes it; the template starts at 0, its own size, which came out over-sharpened and grainy wherever the picture was repainted, docs/research/image-models.md), without its prompt enhancer, on Qwen-Image 2.1's own files. The picture is the reference (TextEncodeQwenImage21). The painted area is the latent's noise mask: the sampler repaints only it, the picture's own latent holding the rest, so the edit lands where it's painted; the picture is then pasted back outside it (ImageCompositeMasked), so nothing else moves. With nothing painted, comfyui.ts drops mask, encode, masked and composite, and the whole picture is repainted. $names are filled in by server/images/comfyui/comfyui.ts. Attention is Comfy Kitchen's int8 (ModelAttentionBackend), as Ming-Image's template has it: less time sampling on an NVIDIA card (docs/research/image-models.md), PyTorch's attention where it can't run, as on a Mac. The picture is first scaled to that budget ($fitWidth × $fitHeight, worked out in comfyui.ts as mflux does) and encoded as the canvas, so the painted area's surroundings are the picture; the result is scaled back to the picture's size ($width × $height) before it is pasted back or saved. QwenImage21Cache at gpu and int8 keeps the text's and the references' share of the attention between steps: the face pass's edit (two images) took ~31 s against ~53 s on an RTX 4070, the faces the same (docs/bench/reference-sheets/2026-11-26/cache/); at auto it went to RAM there and gained nothing.",
   "unet": {
     "class_type": "UNETLoader",
     "inputs": { "unet_name": "$unet", "weight_dtype": "default" }
@@ -7,6 +7,10 @@
   "attention": {
     "class_type": "ModelAttentionBackend",
     "inputs": { "model": ["unet", 0], "attention": "comfy kitchen attention" }
+  },
+  "cache": {
+    "class_type": "QwenImage21Cache",
+    "inputs": { "model": ["attention", 0], "device": "gpu", "dtype": "int8" }
   },
   "clip": {
     "class_type": "CLIPLoader",
@@ -44,7 +48,7 @@
   "sampler": {
     "class_type": "KSampler",
     "inputs": {
-      "model": ["attention", 0],
+      "model": ["cache", 0],
       "seed": "$seed",
       "steps": "$steps",
       "cfg": 1,

@@ -30,6 +30,6 @@ An Image Model draws a person it doesn't know by name a little differently in ev
 ## Consequences
 
 - `session.json` version 5 holds a Session's `sheets` setting, its `sheets` beside the Look (each with why its check found it unfit, `flaw`, when kept so), each written Frame's `expression`, and each picture's and edit's `faces` (the pass, and the version before it). `settings.json` version 3 has the Feature, `faceEditModel` and `sheetImageModel`.
-- A picture of someone with a sheet takes about 3× as long, ~4× on the Mac with mflux (~266 s for an edit and one face), so it's the player's choice before a Session starts.
+- A picture of someone with a sheet takes about 3× as long (on the PC ~55 s for one person after an 18 s render, since its edit workflow keeps the references' attention on the GPU, 2026-11-26), on the Mac with mflux ~2.3× (~3.5 min for one person against ~1.5, since its Qwen-Image 2.1 Edit takes mflux's step cache, 2026-11-26; ~4× before), so it's the player's choice before a Session starts.
 - The face pass paints out what the sheet hasn't and the instruction doesn't name: a render's bruises, a softened expression. Watch in play (open threads).
 - What to keep in the Session manager can leave out the renders before the face pass; sheets are always kept, as every later pass needs them.

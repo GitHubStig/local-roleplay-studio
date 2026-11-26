@@ -611,7 +611,7 @@ function saveNow() {
                 title="For new Sessions"
                 data-feature="sheets"
               >
-                Each picture takes about 3× as long (~54 s instead of 17 on an RTX 4070, ~4 min
+                Each picture takes about 3× as long (~55 s instead of 18 on an RTX 4070, ~3.5 min
                 instead of 1.5 on an M5 Pro Mac). Asked again when a Session starts.
               </FeatureSwitch>
               <template v-if="sheetsOn">

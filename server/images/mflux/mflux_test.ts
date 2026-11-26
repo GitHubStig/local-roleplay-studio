@@ -40,6 +40,7 @@ Deno.test("editArgs edits at the picture's size, quantized as Settings say, in l
     'mflux-community/qwen-image-2-1-mflux-bf16',
     '--base-model',
     'qwen-image-2.1',
+    '--use-step-cache',
     '--image-paths',
     join('/s', 'frame-1.png'),
     '--mask-image',
@@ -89,10 +90,15 @@ Deno.test("editArgs edits at the picture's size, quantized as Settings say, in l
     '--strength',
     '0.92',
   ])
-  // Turbo from its own mflux-community copy.
+  // Turbo from its own mflux-community copy, without the step cache, as its 8 steps skip nothing.
+  const turbo = editArgs(
+    { ...req, model: 'qwen-image-2.1-turbo-edit' },
+    { width: 1216, height: 832 },
+    'o.png',
+  )
+  assertEquals(turbo.includes('--use-step-cache'), false)
   assertEquals(
-    editArgs({ ...req, model: 'qwen-image-2.1-turbo-edit' }, { width: 1216, height: 832 }, 'o.png')
-      .slice(0, 5),
+    turbo.slice(0, 5),
     [
       '--model',
       'mflux-community/qwen-image-2-1-turbo-mflux-bf16',

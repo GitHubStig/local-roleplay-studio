@@ -1,0 +1,6 @@
+#!/bin/bash
+# The real mflux edit, with its step cache when STEP_CACHE=1 (passes-mflux.ts), timed.
+REAL=$HOME/.local/bin/mflux-generate-qwen-2.1-edit
+if [ "$STEP_CACHE" = "1" ]; then set -- "$@" --use-step-cache; fi
+echo "edit args: $*" | sed 's/--prompt [^-]*//' >&2
+exec "$REAL" "$@"

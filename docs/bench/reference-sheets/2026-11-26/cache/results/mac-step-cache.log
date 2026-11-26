@@ -1,0 +1,9 @@
+== step cache off
+frame-0-59b031ea.png seed 8: frame-0-59b031ea-seed8.png, 211 s, available memory at least 13.5 GB
+frame-0-59b031ea.png seed 9: frame-0-59b031ea-seed9.png, 208 s, available memory at least 13.5 GB
+frame-3-94b1411f.png seed 8: frame-3-94b1411f-seed8.png, 420 s, available memory at least 12.0 GB
+== step cache on
+frame-0-59b031ea.png seed 8: frame-0-59b031ea-seed8.png, 114 s, available memory at least 12.5 GB
+frame-0-59b031ea.png seed 9: frame-0-59b031ea-seed9.png, 108 s, available memory at least 13.2 GB
+frame-3-94b1411f.png seed 8: frame-3-94b1411f-seed8.png, 224 s, available memory at least 12.0 GB
+ALL DONE

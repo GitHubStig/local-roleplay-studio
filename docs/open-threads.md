@@ -12,9 +12,9 @@ What the app does or could do: features, models it offers, how it's installed an
   - **One pass**, or the player choosing: bench it again when an edit model is added or upgraded, as two passes are a workaround for today's pull.
   - **Many people in one Frame**: an edit each, ~54 s a person on the PC. Repaint only the most prominent few?
   - **A back of a head**: Qwen3-VL never says "away"; what the pass does to one is untried. Watch in play.
-  - **Marks on a face** (bruises) are painted out by a render's pass; naming them likely keeps them, as naming an edit's cut did. Untried. So is an earlier edit's change (a cut) faded by a later edit's pass, which names only its own (2026-11-26).
+  - **Marks on a face** (bruises) are painted out by a render's pass; naming them likely keeps them, as naming an edit's cut did. Untried. So is an earlier edit's change painted out by a later edit's pass, which names only its own: a cut faded, a smile and a cap lost, three times on 2026-11-26.
   - **An expression softened** (alarm to calm, once in four), **faces that barely move**, and **a head a little tall** (one seed of three): watch in play; the strength trades the first two.
-  - **The edit's step cache** on the PC would about halve its ~54 s face edit, if it keeps the faces.
+  - **The face edit's caches** (2026-11-26, [bench](bench/reference-sheets/2026-11-26/cache/README.md)): the PC's took the reference cache (~53 s to ~31 s a face), the Mac's mflux step cache (~210 s to ~105 s). Left: `gpu` for the Turbo edit's `QwenImage21Cache` on the PC, and a Mac's ComfyUI with the cache at `gpu`.
   - **An object's sheet in the face pass** (its instruction speaks of a face and hair): untried through the app.
   - **The style's lamp in a sheet**: the check notes it; whether it harms the pass is untried.
   - **A Storyboard's plan writes thin identities** for someone the Scenario leaves vague (no age, build or hair, an expression or clothing in it instead), so asking for how hair is worn barely reached it: [bench](bench/reference-sheets/2026-11-26/hair/README.md) (2026-11-26).

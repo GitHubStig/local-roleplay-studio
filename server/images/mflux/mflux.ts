@@ -112,6 +112,11 @@ const EDITORS: Record<EditModelOn<'mflux'>, Editor> = {
       '--base-model',
       'qwen-image-2.1',
     ],
+    // Skips transformer blocks on steps much like the one before: the face pass's edit in about
+    // half the time (~210 s to ~110 s a face on an M5 Pro), the face the same but for fine lines
+    // on one seed of three (docs/bench/reference-sheets/2026-11-26/cache/). Not for the Turbo's 8
+    // steps, under the 10 where it skips anything.
+    args: ['--use-step-cache'],
     mask: '--mask-image',
   },
   'qwen-image-2.1-turbo-edit': {
@@ -161,6 +166,8 @@ interface Editor {
   label: string
   command: string
   model: string[]
+  /** Options of its own, after the model's. */
+  args?: string[]
   /** The option its mask goes in; none if it takes none. */
   mask?: '--mask-image' | '--mask-path'
   /** Its prompt, told where to paint (`editPrompt`); none for the instruction as typed. */
@@ -185,6 +192,7 @@ export function editArgs(
   const editor = EDITORS[req.model as EditModelOn<'mflux'>]
   return [
     ...(editor?.model ?? []),
+    ...(editor?.args ?? []),
     '--image-paths',
     join(req.dir, req.image),
     ...(req.references ?? []).map((r) => join(req.dir, r)),
