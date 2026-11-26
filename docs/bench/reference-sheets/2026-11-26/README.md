@@ -45,7 +45,7 @@ One view at strength 1 (from noise), 0.96 and 0.92, top to bottom.
 
 ## On the Mac
 
-The same Frame of Kael alone, rendered on the PC as the Session's Image Model does, then given its face pass through the running app on this Mac's mflux 0.24.0 (Qwen-Image 2.1, 8-bit, one view, `--strength 0.96`, seed 8): finding his head took 7.4 s (mflux's `_vision_reply`), the face edit 199 s, against 55 s on the PC; the Mac's available memory went from 27.5 GB to 11.7 GB at its least (`docs/bench/memory.ts`), the Text Model unloaded. Left to right: the render, the PC's pass at the same seed and strength, the Mac's. mflux's `--strength` does as ComfyUI's denoise: the sheet's face, the gaze lowered, the head its size.
+The same Frame of Kael alone, rendered on the PC as the Session's Image Model does, then given its face pass through the running app on this Mac's mflux 0.24.0 (Qwen-Image 2.1, 8-bit, one view, `--strength 0.96`, seed 8): finding his head took 7.4 s (mflux's `_vision_reply`), the face edit 199 s, against 55 s on the PC; the Mac's available memory went from 27.5 GB to 11.7 GB at its least (`docs/bench/memory.ts`), with nothing loaded in Ollama as it began. Left to right: the render, the PC's pass at the same seed and strength, the Mac's. mflux's `--strength` does as ComfyUI's denoise: the sheet's face, the gaze lowered, the head its size.
 
 ![](08-mac.jpg)
 

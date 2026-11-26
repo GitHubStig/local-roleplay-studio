@@ -40,7 +40,12 @@ export interface HeadRequest {
 export interface HeadFinder {
   /** Where `who` is in the picture: their head, or a thing whole, by name and identity. */
   find(req: HeadRequest & { who: Subject }, signal: AbortSignal): Promise<Head[]>
-  /** Every head of a person or creature in the picture. */
+  /**
+   * Every head of a person or creature in the picture. Unused since 2026-11-26, when the face pass
+   * took one view of a sheet, which can't paste the sheet's three heads in, so nothing is counted
+   * after it any more. Kept for now, to revisit: stage 6's check of a sheet (three distinct angles)
+   * may use it (docs/reference-sheets-plans.md).
+   */
   count(req: HeadRequest, signal: AbortSignal): Promise<Head[]>
 }
 

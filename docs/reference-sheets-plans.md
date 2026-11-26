@@ -170,6 +170,7 @@ The rest of the app (the owner, 2026-11-25: the Session manager wasn't in any st
 
 ### 6. Finishing
 
+- **Revisit the head count** (the owner, 2026-11-26): `HeadFinder.count` and `prompts/heads/count.md` are unused since stage 4 dropped the count after the face pass; use them for the check below, or remove them.
 - **Checking a sheet before it's used**: three distinct angles, a dark backdrop, no writing (FIBO 2.0 Turbo's wrote "Kael," and turned only the head, 2026-11-25), by the Qwen3-VL already loaded; a sheet that fails is made again, or shown to the player with why.
 - **The model pickers say what sheets need**: the face pass's edit model in the Edit dialog, and a Session's Image Model when it can't make a clean sheet.
 - **Docs**: the design page (pictures.md, session-manager.md, and the Roleplay's and Storyboard's), an ADR (two passes with a sheet), CONTEXT.md's terms (reference sheet, face pass), the showcase line; this file deleted. The mockups deleted with it.

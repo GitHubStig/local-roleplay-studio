@@ -165,6 +165,9 @@ server/           Deno API: the app, Sessions, Settings, the job queue, what all
   video/          clips from a Frame's pictures: comfyui/ (LTX 2.5, Wan 2.2 and MiniMax H3, their workflows in
                   comfyui/workflows/)
   music/          a Roleplay's music: comfyui/ (ACE-Step 1.5, its workflow in comfyui/workflows/)
+  sheets/         reference sheets of a Look's Subjects: made, redone, changed and ticked
+  heads/          finding heads in a picture, by Qwen-Image 2.1's Qwen3-VL on mflux or a ComfyUI
+  faces/          the face pass: each face a render shows repainted from its sheet
   3d/             SHARP scenes, TripoSplat and LiTo figures
   style/          Compare's style scores: the embedder, the measures and the job
   export/         the Compare table as a page of its own, its pictures as WebP
@@ -182,6 +185,7 @@ python/           What uv runs, each in its own folder, its packages in the file
   triposplat/     TripoSplat: the person in a picture as a 3D figure (VAST's code in vendor/)
   lito/           Apple's LiTo, through mlx-spatial: the same, another way
   style/          CSD and CLIP: the pictures as vectors, for Compare's style scores
+  heads/          Qwen-Image 2.1's Qwen3-VL asked about a picture: where a Subject's head is
 docs/             Design, models, research, Scenario format, ADRs and open threads
 CONTEXT.md        Glossary of the game's terms
 ```
