@@ -202,6 +202,8 @@ export async function editFrame<S extends Session>(
       file: image,
       seed,
       edited: true,
+      // Made from faces already the sheets': repainted lighter, keeping an earlier edit's change.
+      ...(from.faces && !from.faces.without && { again: true }),
       ...(mask && { area: mask }),
       ...((mask || !camera) && { change: instruction }),
     },

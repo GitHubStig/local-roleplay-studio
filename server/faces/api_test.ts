@@ -201,6 +201,13 @@ Deno.test("A Roleplay's first picture waits for its sheets, then has its faces r
     const picture = (await getSession(call, 'roleplay')).frames[0].pictures[0]
     assertEquals(picture.faces?.subjects, ['Mira Vance'])
     assert(images.edits[0].instruction.includes('(Mira glares at Sam)'))
+    // And what the Frame's clothing sentence says is on them, marks and all, for the pass to keep.
+    assert(
+      images.edits[0].instruction.endsWith(
+        'Keep what is on Mira Vance in image 1: Mira wears a navy coat; Sam wears oilskins.',
+      ),
+      images.edits[0].instruction,
+    )
   }))
 
 /** A painted area of 100×100, white over the square from `from` to `to` (in thousandths), in base64. */
@@ -311,6 +318,32 @@ Deno.test("An edit of the whole picture that isn't a camera move has its face pa
     )
     assert(!face.instruction.includes('(Calm)'), face.instruction)
     assertEquals((await editJobs(call))[0].edit?.camera, false)
+  }))
+
+Deno.test("An edit made from faces already the sheets' has them repainted lighter", () =>
+  withTempDir(async (root) => {
+    const { call, images } = await rendered(root, 3)
+    // The render's own pass, from the render's face, at the strength measured for it.
+    assertEquals(images.edits[0].strength, 0.96)
+    // An edit made from the faces: its pass repaints them lighter, keeping what it changed, as
+    // 0.96 painted out an earlier edit's cap (docs/bench/reference-sheets/2026-11-26/marks/).
+    await call('POST', '/api/sessions/s1/jobs', {
+      kind: 'edit',
+      frameIndex: 0,
+      edit: { instruction: 'A red cap.', mask: await areaOver(300, 500) },
+    })
+    assertEquals(await settled(call), [])
+    assertEquals(images.edits.at(-1)!.strength, 0.9)
+
+    // Without the face pass, the edit is made from a face as the edit before left it: as a render's.
+    await call('PUT', '/api/sessions/s1/pictures/0/faces', { without: true })
+    await call('POST', '/api/sessions/s1/jobs', {
+      kind: 'edit',
+      frameIndex: 0,
+      edit: { instruction: 'A blue scarf.', mask: await areaOver(300, 500) },
+    })
+    assertEquals(await settled(call), [])
+    assertEquals(images.edits.at(-1)!.strength, 0.96)
   }))
 
 Deno.test('An edit whose painted area touches no face keeps the faces it had', () =>

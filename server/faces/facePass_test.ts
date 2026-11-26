@@ -104,6 +104,7 @@ Deno.test('An edit per face shown, each from the view of its sheet nearest its t
     // Started part-way from the render, as measured for Qwen-Image 2.1 Edit; a model not measured from noise.
     assertEquals(images.edits.map((e) => e.strength), [0.96, 0.96])
     assertEquals(faceStrength('flux3-klein-edit'), 1)
+    assertEquals(faceStrength(DEFAULT_SETTINGS.faceEditModel, true), 0.9)
     assertEquals(images.edits[1].image, `${images.edits[0].name}.png`)
     assertEquals(
       images.edits[0].instruction,

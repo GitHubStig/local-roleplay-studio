@@ -222,6 +222,8 @@ export interface FacesOf {
   shown: string[]
   /** Its expression sentence, '' when not known. */
   expression: string
+  /** What its clothing sentence says each person has on, marks included: a Roleplay Frame's. */
+  worn?: string
 }
 
 /**
@@ -233,10 +235,11 @@ export function facesOfFrame(session: Session, index: number): FacesOf | undefin
   if (session.kind === 'chain') return undefined
   const frame = session.frames[index]
   if (!frame?.image) return undefined
-  const shown = session.kind === 'roleplay'
-    ? (frame.image as RoleplayImage).shown
-    : (frame as StoryboardFrame).shown
-  return { shown, expression: frame.image.expression }
+  if (session.kind === 'roleplay') {
+    const image = frame.image as RoleplayImage
+    return { shown: image.shown, expression: image.expression, worn: image.clothing }
+  }
+  return { shown: (frame as StoryboardFrame).shown, expression: frame.image.expression }
 }
 
 /** What the face pass is given of a picture just made and saved: a render, or an edit. */
@@ -247,6 +250,8 @@ export interface MadeForFaces {
   seed: number
   /** It's an edit. */
   edited?: boolean
+  /** An edit made from a version whose face pass is in use (`FacesRequest.again`). */
+  again?: boolean
   /** An edit's painted area: only the heads it touches are repainted. None for all of the picture. */
   area?: string
   /** What an edit was told, for its face pass to keep (`face-edited.md`): an edit of a painted area's. */
@@ -290,10 +295,12 @@ export async function passFaces<S extends Session>(
       file: made.file,
       seed: made.seed,
       ...(made.edited && { edited: true }),
+      ...(made.again && { again: true }),
       ...(made.area && { area: made.area }),
       ...(made.change && { change: made.change }),
       sheets,
       expression: faces.expression,
+      ...(faces.worn && { worn: faces.worn }),
     },
     emit,
     signal,

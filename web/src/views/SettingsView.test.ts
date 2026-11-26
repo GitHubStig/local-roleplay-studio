@@ -127,7 +127,7 @@ const options: api.SettingsOptions = {
       id: 'qwen-image-2.1-edit',
       label: 'Qwen-Image 2.1 Edit',
       backends: ['mflux', 'comfyui'],
-      faces: { strength: 0.96 },
+      faces: { strength: 0.96, again: 0.9 },
       prompting: '',
     },
     {

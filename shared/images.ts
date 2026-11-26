@@ -62,6 +62,14 @@ export const SHEET_FLAWS: Readonly<Record<string, string>> = {
   'anima-turbo': 'drew the views out of order, two alike or four times on 3 sheets of 6',
 }
 
+/** How much of each head an edit model repaints in the face pass (`EDIT_MODELS`' `faces`). */
+export interface FaceStrengths {
+  /** A head as rendered, or as an edit made from a version without a face pass left it. */
+  strength: number
+  /** A head already its sheet's: an edit's, made from a version whose face pass is in use. */
+  again: number
+}
+
 /**
  * The edit models (ADR 0021): each repaints a picture as told, in an area painted over it, whatever
  * model rendered the picture. Each is known by its name, wherever it runs (ADR 0022): the kinds of
@@ -75,8 +83,10 @@ export const EDIT_MODELS = [
     backends: ['mflux', 'comfyui'],
     // Started part-way from the render: from noise it turned a head in profile to face the viewer
     // and grew some heads; at 0.92 a face that barely moves stayed as rendered (2026-11-26, the PC,
-    // docs/bench/reference-sheets/2026-11-26/).
-    faces: { strength: 0.96 },
+    // docs/bench/reference-sheets/2026-11-26/). An edit of faces already its sheets' at 0.9: at 0.96
+    // the pass painted out an earlier edit's cap and faded its cut, at 0.9 it kept them, the faces
+    // still the sheets', a camera move's too (docs/bench/reference-sheets/2026-11-26/marks/).
+    faces: { strength: 0.96, again: 0.9 },
     prompting: 'Takes an instruction: say what to paint there, terse or described.',
   },
   {
@@ -116,9 +126,10 @@ export const EDIT_MODELS = [
    * How it repaints faces from a reference sheet (the face pass), or why it doesn't: only
    * Qwen-Image 2.1's for now, the best of 2026-11-22's face edits, and its Qwen3-VL finds the heads.
    * `strength`: how much of each head it repaints, from 0 to 1 (`EditRequest.strength`), measured
-   * for this model; a model added here needs its own.
+   * for this model; a model added here needs its own. `again`: how much of a head whose face is
+   * already its sheet's (an edit made from a version whose face pass is in use).
    */
-  faces: { strength: number } | string
+  faces: FaceStrengths | string
   /** How it likes to be told, shown under the instruction (research/image-models.md). */
   prompting: string
 }[]

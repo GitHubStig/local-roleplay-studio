@@ -48,6 +48,11 @@ export interface FacesRequest {
   file: string
   /** It's an edit, not a render, as what's skipped says. */
   edited?: boolean
+  /**
+   * An edit made from a version whose face pass is in use, so each face is already its sheet's:
+   * repainted lighter (`FaceStrengths.again`), which keeps what an earlier edit added (a cap, a cut).
+   */
+  again?: boolean
   /** The seed it was made with: the first face edit is one on (ADR 0011). */
   seed: number
   /**
@@ -61,6 +66,11 @@ export interface FacesRequest {
   expression: string
   /** For an edit, what it was told: the face pass keeps that change rather than the expression named. */
   change?: string
+  /**
+   * What the Frame's clothing sentence says each person has on, marks on the skin included (a
+   * Roleplay's): named for the pass to keep, unless it's told an edit's change.
+   */
+  worn?: string
 }
 
 /** What a face pass did: the picture with its faces repainted, or why it left it as rendered. */
@@ -204,9 +214,14 @@ export function twoPasses(deps: TwoPassDeps): FaceWay {
               image: picture,
               mask,
               references: [viewFor(sheet.made, head.facing)],
-              instruction: await faceInstruction(sheet.subject, req.expression, req.change),
+              instruction: await faceInstruction(
+                sheet.subject,
+                req.expression,
+                req.change,
+                req.worn,
+              ),
               seed,
-              strength: deps.strength ?? faceStrength(model),
+              strength: deps.strength ?? faceStrength(model, req.again),
               quantize: now.editQuantize,
               dir,
               name: `frame-${req.index}-${crypto.randomUUID().slice(0, 8)}`,
@@ -274,23 +289,36 @@ export function viewFor(made: SheetPicture, facing: Head['facing']): string {
   return facing?.endsWith('right') ? made.mirrored[i] : made.views[i]
 }
 
-/** How much of each head edit model `model` repaints in the face pass, as measured for it; all of it for one not measured. */
-export function faceStrength(model: EditModel): number {
+/**
+ * How much of each head edit model `model` repaints in the face pass, as measured for it, for a
+ * face already its sheet's (`again`) or not; all of it for a model not measured.
+ */
+export function faceStrength(model: EditModel, again = false): number {
   const faces = EDIT_MODELS.find((m) => m.id === model)?.faces
-  return typeof faces === 'object' ? faces.strength : 1
+  return typeof faces === 'object' ? again ? faces.again : faces.strength : 1
 }
 
 /**
  * The face pass's instruction for one Subject: after an edit, the change it made named (`change`);
- * else its expression named, where it's known.
+ * else its expression named, where it's known, and what the Frame's clothing sentence says is on
+ * them (`worn`), where it's kept.
  */
-export const faceInstruction = (
+export async function faceInstruction(
   name: string,
   expression: string,
   change?: string,
-): Promise<string> =>
-  change?.trim()
-    ? loadPrompt('faces/face-edited', { name, change: change.trim().replace(/([^.!?])$/, '$1.') })
-    : expression.trim()
-    ? loadPrompt('faces/face', { name, expression: expression.trim().replace(/\.$/, '') })
-    : loadPrompt('faces/face-unknown', { name })
+  worn?: string,
+): Promise<string> {
+  if (change?.trim()) {
+    return loadPrompt('faces/face-edited', {
+      name,
+      change: change.trim().replace(/([^.!?])$/, '$1.'),
+    })
+  }
+  const face = expression.trim()
+    ? await loadPrompt('faces/face', { name, expression: expression.trim().replace(/\.$/, '') })
+    : await loadPrompt('faces/face-unknown', { name })
+  return worn?.trim()
+    ? `${face} ${await loadPrompt('faces/worn', { name, worn: worn.trim() })}`
+    : face
+}

@@ -387,7 +387,7 @@ export async function renderRoleplayFrame(
     emit,
     signal,
     (change) => updateSession(deps.store, session.id, change),
-    { shown: image.shown, expression: image.expression },
+    { shown: image.shown, expression: image.expression, worn: image.clothing },
   )
   emit({ type: 'rendered', frame: rendered, session: updated })
   return updated

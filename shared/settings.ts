@@ -4,7 +4,13 @@
 import type { Backend, Work } from './backends.ts'
 import type { ClipSize } from './clips.ts'
 import type { Availability, Feature } from './features.ts'
-import type { EditModel, ImageBackendKind, ImageModelOption, Upscaler } from './images.ts'
+import type {
+  EditModel,
+  FaceStrengths,
+  ImageBackendKind,
+  ImageModelOption,
+  Upscaler,
+} from './images.ts'
 
 export type SeedMode = 'random' | 'fixed'
 
@@ -209,7 +215,7 @@ export interface SettingsOptions extends TextModelList {
     label: string
     backends: readonly ImageBackendKind[]
     /** How it repaints faces from a reference sheet, or why it doesn't (`EDIT_MODELS`). */
-    faces: { strength: number } | string
+    faces: FaceStrengths | string
     prompting: string
   }[]
   /** The kind of backend each edit model's edits go to now, by name; none for one nowhere. */
