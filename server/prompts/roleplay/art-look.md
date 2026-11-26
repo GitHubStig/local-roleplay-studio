@@ -8,7 +8,8 @@ people it shows.
 The reply's shape is roleplayLookSchema in server/roleplay/art.ts.
 
 Values: character.name, persona.name; identity (shared/identity.md); limits (art-limits.md while
-the Limits are on, empty otherwise)
+the Limits are on, empty otherwise). Followed by the Scenario's Truths and what it states
+(shared/scenario-truths.md, shared/scenario-facts.md), as a Storyboard's plan is (2026-11-26).
 -->
 
 # Your job

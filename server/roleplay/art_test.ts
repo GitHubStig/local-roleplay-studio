@@ -6,6 +6,7 @@ import type { Person } from '../../shared/scenario.ts'
 import { lookForModel } from '../frameBody.ts'
 import {
   artFrameMessages,
+  artLookMessages,
   imageOf,
   lastWorn,
   parseRoleplayLook,
@@ -69,6 +70,29 @@ const session: RoleplaySession = {
     },
   ],
 }
+
+Deno.test("The Look's call is given what the Scenario states of its People, as the Cast can drop it", async () => {
+  const scenario = {
+    ...briefScenario('A storm at sea.'),
+    people: [
+      {
+        id: personId(MIRA),
+        name: MIRA,
+        looks: 'a tall woman, her red hair in a single braid',
+        wears: '',
+        personality: '',
+        speaks: '',
+        background: '',
+        goal: '',
+        truths: [],
+      } satisfies Person,
+    ],
+  }
+  const [system] = await artLookMessages(session, scenario)
+  assertStringIncludes(system.content, 'her red hair in a single braid')
+  // And picks how hair is worn where nothing says.
+  assertStringIncludes(system.content, "how it's worn")
+})
 
 Deno.test('storyText has both sides of each exchange, but no thoughts, up to the Frame', () => {
   assertEquals(

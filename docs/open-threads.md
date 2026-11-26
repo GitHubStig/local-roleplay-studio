@@ -17,7 +17,7 @@ What the app does or could do: features, models it offers, how it's installed an
   - **The edit's step cache** on the PC would about halve its ~54 s face edit, if it keeps the faces.
   - **An object's sheet in the face pass** (its instruction speaks of a face and hair): untried through the app.
   - **The style's lamp in a sheet**: the check notes it; whether it harms the pass is untried.
-  - **A fixed hairstyle for someone the Scenario leaves vague**, picked by the Look's writer: a prompt change, untried.
+  - **A Storyboard's plan writes thin identities** for someone the Scenario leaves vague (no age, build or hair, an expression or clothing in it instead), so asking for how hair is worn barely reached it: [bench](bench/reference-sheets/2026-11-26/hair/README.md) (2026-11-26).
   - **Sheets on one Mac hold up the Text Model** while the Cast is reviewed (a Reply waits ~112 s for two sheets).
   - **A ComfyUI job after the Mac sleeps**: a bench waited for ever; whether the app's jobs do is untried.
   - **Not yet through the app**: the PC running the app itself. (A Storyboard's sheets, face pass and edits, and sheets made and checked on mflux, ran through the app on 2026-11-26: [bench](bench/reference-sheets/2026-11-26/app/README.md).)

@@ -11,6 +11,7 @@ import { crossedLimit, limitsEnabled } from '../limits.ts'
 import { composePrompt, matchShown, shownSubjects } from '../look.ts'
 import type { ChatMessage } from '../text/chat.ts'
 import { loadPrompt } from '../promptFiles.ts'
+import { withNotes } from '../promptParts.ts'
 import { personId } from '../scenario.ts'
 import type { Scenario } from '../../shared/scenario.ts'
 import { frameSchema, lookForModel, lookSchema, parseLook } from '../frameBody.ts'
@@ -176,20 +177,23 @@ export function lastWorn(session: RoleplaySession, index: number): string {
   ].join('\n')
 }
 
-/** The call that writes a Roleplay's Look, from its Cast and Brief. */
+/**
+ * The call that writes a Roleplay's Look, from its Cast and Brief, with what the Scenario states (its
+ * People's Looks among it) and its Truths, as a Storyboard's plan has them: the Cast sums each
+ * person up and can drop what the Scenario says of their hair, which the Look then never saw
+ * (docs/bench/reference-sheets/2026-11-26/hair/).
+ */
 export async function artLookMessages(
   session: RoleplaySession,
   scenario: Scenario,
 ): Promise<ChatMessage[]> {
+  const rules = await loadPrompt('roleplay/art-look', {
+    ...session.cast!,
+    identity: await loadPrompt('shared/identity'),
+    limits: await artLimits(),
+  })
   return [
-    {
-      role: 'system',
-      content: await loadPrompt('roleplay/art-look', {
-        ...session.cast!,
-        identity: await loadPrompt('shared/identity'),
-        limits: await artLimits(),
-      }),
-    },
+    { role: 'system', content: await withNotes(rules, scenario, true) },
     {
       role: 'user',
       content: await loadPrompt('roleplay/art-look-request', {
