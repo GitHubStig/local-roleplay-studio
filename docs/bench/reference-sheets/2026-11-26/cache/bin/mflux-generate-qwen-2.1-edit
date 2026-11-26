@@ -1,6 +1,11 @@
 #!/bin/bash
-# The real mflux edit, with its step cache when STEP_CACHE=1 (passes-mflux.ts), timed.
+# The real mflux edit, with its step cache when STEP_CACHE=1 (passes-mflux.ts) and without it when
+# STEP_CACHE=0, taking out the flag the app adds since it was built (edits-mflux.ts), timed.
 REAL=$HOME/.local/bin/mflux-generate-qwen-2.1-edit
-if [ "$STEP_CACHE" = "1" ]; then set -- "$@" --use-step-cache; fi
+if [ "$STEP_CACHE" = "0" ]; then
+  args=(); for a in "$@"; do [ "$a" != "--use-step-cache" ] && args+=("$a"); done; set -- "${args[@]}"
+elif [ "$STEP_CACHE" = "1" ] && [[ " $* " != *" --use-step-cache "* ]]; then
+  set -- "$@" --use-step-cache
+fi
 echo "edit args: $*" | sed 's/--prompt [^-]*//' >&2
 exec "$REAL" "$@"

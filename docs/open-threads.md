@@ -10,7 +10,7 @@ What the app does or could do: features, models it offers, how it's installed an
 - **Reference sheets** (built 2026-11-26: [ADR 0045](adr/0045-faces-are-repainted-from-a-reference-sheet.md), [design/pictures.md](design/pictures.md)). A sheet of each Subject repaints its faces after every render and edit. What's left of it, each [in detail](research/people-in-pictures.md#still-open):
   - **Without Qwen-Image 2.1.** The face pass needs its edit and its Qwen3-VL; other edit models and finders can come later.
   - **One pass**, or the player choosing: bench it again when an edit model is added or upgraded, as two passes are a workaround for today's pull.
-  - **The face edit's caches, what's left**: a Mac's ComfyUI at `gpu`, and the player's own Qwen-Image 2.1 edits on mflux with the step cache against without.
+  - **The face edit's cache on a Mac's ComfyUI** at `gpu`: untried, for someone running ComfyUI on a Mac rather than mflux.
   - **A Storyboard's plan writes thin identities** for someone the Scenario leaves vague (no age, build or hair; an expression or clothing instead).
   - **The PC's own run of the app**: only the PC can.
   - **Watch in play**: a sheet's lamp lending its warm light to a face (it's never pasted in), an earlier edit's change still painted out at times (4 of 5 kept at 0.9), many people in one Frame (repaint only the most prominent few?), a back of a head, an expression softened, faces that barely move, a head a little tall, sheets on one Mac holding up the Text Model, and the check missing very small writing.
