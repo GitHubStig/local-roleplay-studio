@@ -1,0 +1,5 @@
+job 87cb7b9e
+0s running image null  2026-11-26T03:49:17.271Z None
+18s running faces {"subjects": ["Kael", "Elara"]}  2026-11-26T03:49:17.271Z None
+30s running faces {"subjects": ["Kael"]}  2026-11-26T03:49:17.271Z None
+85s done None {"subjects": ["Kael"]}  2026-11-26T03:49:17.271Z 2026-11-26T03:50:40.921Z

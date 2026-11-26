@@ -150,23 +150,31 @@ Built in `server/faces/` (the pass), with a reference and a strength on every ed
 - **The face pass paints out what the sheet hasn't** (the Princess): her identity says her skin is marked by bruises, and each render drew them, but each face pass took her sheet's clean skin; and in the fourth Frame her open-mouthed alarm became calm, though the expression sentence named it (open questions).
 - **Not done**: a Storyboard through the running app (its face pass is the same code, checked by the tests); the PC's own run of the app (this Mac sent its work there); an object's sheet (the lantern) through the face pass, whose instruction speaks of a face and hair.
 
-### 5. Edits, and the rest of the app it touches
+### 5. Edits, and the rest of the app it touches: done (2026-11-26)
 
-The owner asked how an edit works when a Session has sheets: does the edit model get the reference, the painted area and a prompt with both instructions at once? The plan is **no: two edits in a row, never one with both.** The player's edit runs as now (the picture, its painted area, its instruction, no sheet), and then the face pass runs on its result, in the same job. Folding both into one edit would bring back what one pass does: a reference passed into an edit that redraws a person pulls their expression, pose and clothes towards the sheet's, so "make her smile" or "turn him to the window" would fight the sheet; and the benches found an edit follows one clear instruction better than two.
+The owner asked how an edit works when a Session has sheets: does the edit model get the reference, the painted area and a prompt with both instructions at once? **No: two edits in a row, never one with both.** The player's edit runs as before (the picture, its painted area, its instruction, no sheet), then the face pass on its result, in the same job (`editFrame`, sharing `passFaces` with the render in `server/frames.ts`). Folding both into one edit would bring back what one pass does: a reference passed into an edit that redraws a person pulls their expression, pose and clothes towards the sheet's.
 
-- **Only when it touches a face.** An edit whose painted area misses every head found keeps the faces it had, so no face pass; one over a head, or of the whole picture, gets one.
-- **Camera moves** (ADR 0038) redraw the whole picture from a new angle, so a face pass always follows them. Steep angles hold, though the sheet has no view from above or below (stage 0).
-- **Each edit's face pass is part of that version** (ADR 0021): the version shows the result after the pass, with "Without the face pass" as for a render.
-- **An edit model that takes no references** still does the player's edit; the face pass is always by the section's edit model.
+Built:
 
-The rest of the app (the owner, 2026-11-25: the Session manager wasn't in any stage). Sheets add two kinds of file to a Session, which its parts (`server/sessionParts.ts`) must own:
+- **Only when it touches a face.** The heads are found on the edit's result, and only those whose box has any of the painted area in it are repainted (`touches`, `server/faces/area.ts`); none touched, the faces stay as they were and the job is simply done (`FacesStep.untouched`, not left on the picture as a skip is). An edit of the whole picture (a camera move, ADR 0038) repaints every head. A camera move with a painted area repaints only the area, so the heads outside it are unchanged and need no pass.
+- **Each edit's face pass is part of that version** (ADR 0021): `PictureEdit.faces`, the edit before the pass kept beside it, with Without the face pass (`PUT …/faces` swaps the version the Frame shows, render or edit); the Faces chip follows the version shown. Each edit is seeded one on from what it's made from (its face pass's last seed where its faces are in use, `seedOf`), its pass one on again.
+- **The face pass is always by the section's edit model** (`faceEditModel`), whatever edited the picture (the Turbo, in the runs).
+- **What to keep**: "Renders before the face pass", a tick under Pictures (`LeftOut.beforeFaces`): each render's and edit's `faces.other` where the faces are in use. Left out, the faces keep whose they are and their seed (`FacePass.other` is now optional, absent only then), and the chip says whose with nothing to hold. **Chosen picture only** keeps the same of the version kept, or the render where the Frame used it without the pass. The size bar says them apart beside Pictures (`SessionContents.beforeFaces`), as the mockup draws.
+- **Export, import and Clone** carry both, as the Pictures part owns them (`frame-…`, `edit-…`): checked by a test of each, and the export without the tick.
+- **Compare**: a render by another Image Model is a render job like any, so it has its own face pass (a test).
+- **Stored** in `session.json` v5, folded in as stage 4's was (nothing has made one outside this Mac, as stage 4 isn't pushed): `PictureEdit.faces`, and `FacePass.other` optional.
 
-- **The renders before the face pass**, one per pictured Frame and per edit that had one, always kept (the owner, 2026-11-25): about as many bytes again as its pictures. A tick under Pictures in What to keep, beside upscales and edits ("Renders before the face pass"); without them the chip says whose faces were repainted, with nothing to hold. **Chosen picture only** drops them too, unless a Frame uses its render without the pass, which is then the picture it keeps.
-- **The sheets**: a part of their own ("Reference sheets"), in the size bar and the counts, and not removable, as later pictures and edits need them for their face pass; one 1536×640 picture per ticked Subject is too small to be worth freeing. (Built first in stage 3.)
-- **Export, import and Clone** carry both, as files a part owns: a Clone keeps its sheets, so the copy carries on with the same faces.
-- **Chain from a Frame** copies the picture after the face pass, not the sheets: a Chain has no Look, so its later Frames render plainly.
-- **Compare**: each Image Model's render has its own face pass, so Compare shows every model's faces repainted.
-- **Re-render** runs the face pass again; **Undo** and deleting a Frame remove its files as now.
+**Decided on the way** (2026-11-26, from the [bench](bench/reference-sheets/2026-11-26/edits/README.md)):
+
+- **An edit of a painted area names its own instruction in the face pass** (`prompts/faces/face-edited.md`: "…but keep what was changed in image 1: <the instruction>"). Told the Frame's expression, as a render's pass is, the pass put back a smile and painted out a cap and a cut, on every seed (3 of 3 each); told only to keep the expression "as in image 1", the same (stage 0 had found that wording loses expressions; it was benched again by mistake); told the change, it kept all three on every seed.
+- **An edit of the whole picture is told as a render is**, the Frame's expression named: on two camera moves both wordings gave the sheets' faces, but naming the move lost a close-up's lowered gaze on one seed of two, where naming the expression kept it on both.
+
+**Found** (2026-11-26, the tavern clone):
+
+- **Times**, the PC's ComfyUI sent from this Mac: the Turbo's edit ~17 s, finding a head ~7 s a person, a face edit ~53 s each; ~78–85 s for an edit over one person, ~138 s for a camera move over two; an edit whose area touched no face 30 s (the edit, and finding both heads). This Mac's mflux 0.24.0 (8-bit): the Turbo's edit 47 s, finding the head 7.8 s, the face edit 211 s, 266 s in all; available memory from 23.1 GB to 11.8 GB.
+- **A camera move, then its face pass, keeps the sheet's face**: Kael and Elara after a low angle (Elara her sheet's dark hair, which stage 4's whole-sheet pass had left blonde), Kael after a close-up of his face, on both machines.
+- **The Turbo's edits of a painted area often drew nothing** (a red cloth, a cap); Qwen-Image 2.1 Edit drew them. Not this stage's to fix.
+- **Not done**: a Storyboard's edit through the running app (the same code, checked by the tests); the PC's own run of the app; an edit of the whole picture that changes an expression with nothing painted ("make him smile"), whose smile the pass would put back (open questions).
 
 ### 6. Finishing
 
@@ -187,7 +195,8 @@ The rest of the app (the owner, 2026-11-25: the Session manager wasn't in any st
 - **Some faces barely move**: Elara's hardly changed in the face edits of the portrait and sheet trials, and Mira's (stage 0b); with the expression named Elara's moved more (stage 0), but less than Kael's; and a FLUX.3 Klein Kael kept most of his own (stage 0b). Watch for it in play.
 
 - **A fixed look for someone the Scenario leaves vague** (stage 4, the Princess): her Scenario names no hairstyle, and without one the Image Model drew from what it knows of the name, a different one in each Frame. The Look's writer could pick one, as it picks clothes, so it's in the words from the first picture; a prompt change for the Look, to bench over seeds. Untried.
-- **Marks on a face** (stage 4, the Princess): bruises the identity names and the render draws were painted out, as the sheet's face has none. Naming them in the instruction (from the identity, or the Frame's sentences) may keep them; untried.
+- **Marks on a face** (stage 4, the Princess): bruises the identity names and the render draws were painted out, as the sheet's face has none. Naming them in the instruction (from the identity, or the Frame's sentences) may keep them: stage 5 found naming an edit's cut kept it on every seed, so likely, but untried for a render.
+- **An edit of the whole picture that changes a face** (stage 5): with nothing painted, the app can't tell "make him smile" from a camera move, so its pass is told the Frame's expression and would put the smile back. The Edit dialog could say which a camera move is (the Camera list writes it), and every other edit name its change.
 - **An expression the face pass softens** (stage 4, the Princess): alarm became calm once in four, the sentence named. Watch for it in play; a strength a little lower keeps more of the render's face, at the cost of faces that barely move.
 - **The edit's step cache** (stage 4): the app's face edits on the PC take ~54 s, the bench's took 28 s with `QwenImage21Cache`; adding it to the edit workflow would halve the face pass there, if it keeps the faces as they are. mflux has its own (`--use-step-cache`), untried for edits.
 - **An object's sheet in the face pass** (stage 4): the instruction speaks of "the face and hair"; stage 0 found an object needs its state named instead. Untried through the app.
