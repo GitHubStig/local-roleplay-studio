@@ -1,6 +1,6 @@
-import { assertEquals } from '@std/assert'
+import { assertEquals, assertRejects } from '@std/assert'
 import { runWorkflow, upload } from './client.ts'
-import { fakeComfyUI } from './testing.ts'
+import { fakeComfyUI, halfOpenProxy } from './testing.ts'
 import { type ComfyTrace, notingTraces } from './traces.ts'
 
 const GB = 1024 ** 3
@@ -86,6 +86,27 @@ Deno.test('A prompt queued and a file uploaded are told to the work noting them'
       { prompt: { base: comfy.url, promptId: 'p1' } },
     ])
   } finally {
+    await comfy.close()
+  }
+})
+
+Deno.test('A job whose WebSocket went half-open, as after a sleep, fails once ComfyUI no longer has it', async () => {
+  // ComfyUI runs and finishes the prompt as usual; its messages, the picture among them, reach no
+  // one, and the prompt leaves its queue. /system_stats still answers, so only the queue tells.
+  const comfy = fakeComfyUI()
+  const proxy = halfOpenProxy(comfy.url)
+  try {
+    const started = performance.now()
+    await assertRejects(
+      () => runWorkflow(proxy.url, {}, new AbortController().signal, 100),
+      Error,
+      'ComfyUI no longer has this job',
+    )
+    // Four checks without it, not the whole wait.
+    assertEquals(performance.now() - started < 2000, true)
+    assertEquals(comfy.posted.find((p) => p.path === '/history')?.body, { delete: ['p1'] })
+  } finally {
+    await proxy.close()
     await comfy.close()
   }
 })

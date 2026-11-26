@@ -213,3 +213,61 @@ export function fakeComfyUI(
     },
   }
 }
+
+/**
+ * A proxy to a ComfyUI that passes HTTP through, but each WebSocket only until it's open: then its
+ * bytes go nowhere either way while it stays connected, as a WebSocket left half-open after this
+ * computer slept. The ComfyUI behind it carries on, finishing a prompt whose messages no one hears.
+ */
+export function halfOpenProxy(target: string) {
+  const { hostname, port } = new URL(target)
+  const listener = Deno.listen({ hostname: '127.0.0.1', port: 0 })
+  const conns: Deno.Conn[] = []
+  const pipe = async (
+    from: Deno.Conn,
+    to: Deno.Conn,
+    state: { ws: boolean; open: boolean },
+    fromComfy: boolean,
+  ) => {
+    const buf = new Uint8Array(64 * 1024)
+    try {
+      for (let n = await from.read(buf); n !== null; n = await from.read(buf)) {
+        const chunk = buf.subarray(0, n)
+        if (!state.ws && new TextDecoder().decode(chunk.subarray(0, 8)).startsWith('GET /ws')) {
+          state.ws = true
+        }
+        if (state.open) continue
+        for (let at = 0; at < n;) at += await to.write(chunk.subarray(at))
+        // The handshake's answer passed: the socket is open, and from now on hears nothing.
+        if (state.ws && fromComfy && /^HTTP\/1\.1 101/.test(new TextDecoder().decode(chunk))) {
+          state.open = true
+        }
+      }
+    } catch { /* closed */ }
+    if (state.open) return
+    try {
+      to.close()
+    } catch { /* already closed */ }
+  }
+  const accepting = (async () => {
+    for await (const conn of listener) {
+      const up = await Deno.connect({ hostname, port: Number(port) })
+      conns.push(conn, up)
+      const state = { ws: false, open: false }
+      pipe(conn, up, state, false)
+      pipe(up, conn, state, true)
+    }
+  })().catch(() => {})
+  return {
+    url: `http://127.0.0.1:${(listener.addr as Deno.NetAddr).port}`,
+    close: async () => {
+      listener.close()
+      for (const c of conns) {
+        try {
+          c.close()
+        } catch { /* already closed */ }
+      }
+      await accepting
+    },
+  }
+}
