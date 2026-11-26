@@ -121,6 +121,7 @@ function leftOutWords(left: LeftOut): string[] {
   }
   if (left.upscales) words.push('the upscales')
   if (left.edits) words.push('the edits and their painted areas')
+  if (left.beforeFaces) words.push('the renders before the face pass')
   for (const [model, kinds] of Object.entries(left.clips)) {
     words.push(`${videoLabelOf(model)}'s ${kinds.map((k) => CLIP_KIND_NAMES[k]).join(', ')} clips`)
   }
@@ -229,8 +230,9 @@ const started = computed(() =>
 )
 
 /** The size bar's pieces, each part's colour, and what's in none (its text and caches) last. */
-const COLOURS: Record<(typeof SESSION_PARTS)[number] | 'rest', string> = {
+const COLOURS: Record<(typeof SESSION_PARTS)[number] | 'beforeFaces' | 'rest', string> = {
   pictures: 'bg-fg',
+  beforeFaces: 'bg-fg/75',
   sheets: 'bg-fg/50',
   clips: 'bg-info',
   '3d': 'bg-warn',
@@ -241,9 +243,16 @@ const COLOURS: Record<(typeof SESSION_PARTS)[number] | 'rest', string> = {
 const pieces = computed(() => {
   const c = contents.value
   if (!c) return []
+  type Piece = { key: keyof typeof COLOURS; label: string; size: number }
+  // The renders before the face pass count with Pictures, said apart, beside them.
+  const before: Piece = { key: 'beforeFaces', label: 'Renders before the face pass', size: c.beforeFaces }
   return [
-    ...SESSION_PARTS.map((p) => ({ key: p, label: PART_LABELS[p], size: c.parts[p] })),
-    { key: 'rest' as const, label: 'Text and caches', size: c.rest },
+    ...SESSION_PARTS.flatMap((p): Piece[] =>
+      p === 'pictures'
+        ? [{ key: p, label: PART_LABELS[p], size: c.parts[p] - c.beforeFaces }, before]
+        : [{ key: p, label: PART_LABELS[p], size: c.parts[p] }]
+    ),
+    { key: 'rest', label: 'Text and caches', size: c.rest } satisfies Piece,
   ].filter((p) => p.size > 0).map((p) => ({ ...p, share: c.size ? (p.size / c.size) * 100 : 0 }))
 })
 

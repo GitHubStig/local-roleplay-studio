@@ -48,6 +48,11 @@ export interface SessionContents {
   size: number
   /** Bytes per part. */
   parts: Record<SessionPart, number>
+  /**
+   * Bytes of the pictures' that are renders (and edits) before their face pass, where the faces
+   * are in use: counted with Pictures, said apart in the size bar.
+   */
+  beforeFaces: number
   /** Bytes in no part: its text (`session.json`) and caches (thumbnails, style scores). */
   rest: number
   counts: SessionCounts

@@ -5,7 +5,14 @@
  * only a line's newest can be retried (in its place, with a new seed) or deleted, and the one
  * picked is the picture everywhere (`pickedVersion`).
  */
-import { type FrameDeps, frameName, imageProgress, removeImage } from './frames.ts'
+import {
+  facesOfFrame,
+  type FrameDeps,
+  frameName,
+  imageProgress,
+  passFaces,
+  removeImage,
+} from './frames.ts'
 import { error } from './http.ts'
 import type { EditModel } from '../shared/images.ts'
 import type { JobEmit } from './jobs.ts'
@@ -18,16 +25,17 @@ import { editJob } from './machine.ts'
 import {
   changeFramePicture,
   changeRenderedPicture,
+  editFiles,
   editLine,
   editSource,
   pickedVersion,
   PictureGoneError,
   removeFiles,
+  seedOf,
   shownPictureOf,
   swapFaces,
-  versionFiles,
 } from './pictures.ts'
-import type { PictureEdit } from '../shared/pictures.ts'
+import type { FacePass, PictureEdit, PictureVersion } from '../shared/pictures.ts'
 import { RenderQueue } from './renderQueue.ts'
 import type { SessionStore } from './session.ts'
 import type { Session } from '../shared/session.ts'
@@ -78,7 +86,10 @@ export function checkEdit(
  * saved when it was queued, is kept beside it.
  */
 export async function editFrame<S extends Session>(
-  deps: Pick<FrameDeps, 'store' | 'imageGenerator' | 'renderQueue' | 'backendOf' | 'settings'>,
+  deps: Pick<
+    FrameDeps,
+    'store' | 'imageGenerator' | 'renderQueue' | 'backendOf' | 'settings' | 'faces'
+  >,
   session: S,
   index: number,
   order: EditOrder,
@@ -105,14 +116,15 @@ export async function editFrame<S extends Session>(
   // its reference, redraws the picture over-sharpened and ignores the instruction ("noise replay",
   // docs/research/image-models.md). The render is made with the Session's seed (its faces, if it
   // had a face pass in use, with the pass's last), and each edit is one on from what it's made
-  // from; a retry, one on from the edit it replaces.
-  const original = picture.faces && !picture.faces.without ? picture.faces.seed : session.seed
-  const seed = redo ? redo.seed + 1 : ('seed' in from ? from.seed : original) + 1
+  // from (its face pass's last, likewise); a retry, one on from the edit it replaces.
+  const seed = redo ? redo.seed + 1 : seedOf(from, session.seed) + 1
   // Found once, so the edit records where it was made.
   const backend = await deps.backendOf?.(editJob(model, order.backend))
   const kind = backend && imageKindOf(backend)
   const start = performance.now()
   let waited = false
+  let updated: S
+  let image: string
   const release = await (deps.renderQueue ?? new RenderQueue()).acquire(signal, () => {
     waited = true
     emit({ type: 'phase', phase: 'queued' })
@@ -122,7 +134,7 @@ export async function editFrame<S extends Session>(
     emit({ type: 'phase', phase: 'image' })
     const began = performance.now()
     const { onProgress, onDownload } = imageProgress(emit)
-    const image = await deps.imageGenerator.edit(
+    image = await deps.imageGenerator.edit(
       {
         model,
         ...(backend && { backend }),
@@ -149,7 +161,7 @@ export async function editFrame<S extends Session>(
       timings: { ...(queued !== undefined ? { queued } : {}), edit: secondsSince(began) },
     }
     let replaced: PictureEdit | undefined
-    const updated = await save((latest) =>
+    updated = await save((latest) =>
       changeRenderedPicture(latest, picture.file, (p) => {
         if (editSource(p, model).file !== (redo ?? from).file) {
           throw new PictureGoneError('That picture changed while it was being edited')
@@ -163,13 +175,8 @@ export async function editFrame<S extends Session>(
       })
     )
     // The edit it replaced, with what was made from it and its painted area.
-    if (replaced) {
-      const files = versionFiles(replaced)
-      if (replaced.mask && replaced.mask !== mask) files.push(replaced.mask)
-      await removeFiles(dir, files)
-    }
+    if (replaced) await removeFiles(dir, editFiles(replaced).filter((f) => f !== mask))
     emit({ type: 'edited' })
-    return updated
   } catch (err) {
     // The painted area stays with the job, to retry; it goes when the job is dismissed.
     await removeImage(dir, name)
@@ -177,6 +184,32 @@ export async function editFrame<S extends Session>(
   } finally {
     release()
   }
+  // Then its face pass, in a Session with sheets, as a render's (docs/reference-sheets-plans.md,
+  // stage 5): never one edit with both instructions, as a sheet passed into an edit that redraws a
+  // person pulls their expression and pose to the sheet's. Only the heads its painted area touches,
+  // told to keep what the edit changed (a smile, a cap, a cut), which the pass painted out when told
+  // the Frame's expression or nothing; or every head for an edit of all of the picture, as a camera
+  // move is, told the Frame's expression as a render's pass is, which kept a close-up's lowered gaze
+  // where naming the move didn't (docs/bench/reference-sheets/2026-11-26/edits/).
+  const faces = facesOfFrame(session, index)
+  if (!faces) return updated
+  const faced = await passFaces(
+    deps,
+    updated,
+    index,
+    {
+      file: image,
+      seed,
+      edited: true,
+      ...(mask && { area: mask, change: instruction }),
+    },
+    faces,
+    emit,
+    signal,
+    save,
+    (latest, pass) => changeFramePicture(latest, image, (v) => swapFaces({ ...v, faces: pass })),
+  )
+  return faced ?? updated
 }
 
 export class VersionError extends Refusal {}
@@ -203,8 +236,9 @@ export function pickVersion(
 }
 
 /**
- * Uses the render without its face pass for the picture Frame `index` shows (`without`), or its
- * faces again: the two swap, each keeping what was made from it (`swapFaces`).
+ * Uses the version Frame `index`'s picture shows (its render, or its picked edit) without its face
+ * pass (`without`), or its faces again: the two swap, each keeping what was made from it
+ * (`swapFaces`). Refused once the picture before the pass was left out (the Session manager).
  */
 export function useFaces(
   store: SessionStore,
@@ -214,9 +248,14 @@ export function useFaces(
 ): Promise<Session> {
   return updateSession(store, session.id, session.kind, (latest: Session) => {
     const picture = shownPictureOf(latest, index)
-    if (!picture?.faces) throw new VersionError(`${frameName(index)}'s picture had no face pass`)
-    if (picture.faces.without === without) return latest
-    return changeRenderedPicture(latest, picture.file, swapFaces)
+    const version: PictureVersion & { faces?: FacePass } | undefined = picture &&
+      pickedVersion(picture)
+    if (!version?.faces) throw new VersionError(`${frameName(index)}'s picture had no face pass`)
+    if (version.faces.without === without) return latest
+    if (!version.faces.other) {
+      throw new VersionError(`${frameName(index)}'s picture before its face pass wasn't kept`)
+    }
+    return changeFramePicture(latest, version.file, swapFaces)
   })
 }
 
@@ -256,10 +295,7 @@ export async function deleteNewestEdit(
       return { ...render, ...(edits.length && { edits }), ...(picked && { picked }) }
     })
   })
-  await removeFiles(store.dir(session.id), [
-    ...versionFiles(gone!),
-    ...(gone!.mask ? [gone!.mask] : []),
-  ])
+  await removeFiles(store.dir(session.id), editFiles(gone!))
   return updated
 }
 

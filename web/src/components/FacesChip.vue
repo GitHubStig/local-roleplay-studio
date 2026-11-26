@@ -9,18 +9,18 @@ import PopMenu from './PopMenu.vue'
 /**
  * "Faces from sheets" on a picture whose faces were repainted from their reference sheets
  * (docs/reference-sheets-plans.md), as Edited is on an edited one. Clicking it says whose faces
- * were repainted, with Without the face pass, which uses the render for that Frame; the chip then
- * offers the faces back. Holding it (a long press on a touch screen, as a long press on the
- * picture opens its menu) shows the other version while held (`peek`). Shown while the picture's
- * Original is what the Frame shows, not one of its edits. On a phone it's an icon, so the line of
- * the Frame's work beside it has the room.
+ * were repainted, with Without the face pass, which uses the picture before for that Frame; the
+ * chip then offers the faces back. Holding it (a long press on a touch screen, as a long press on
+ * the picture opens its menu) shows the other version while held (`peek`). For the version the
+ * Frame shows: its render, or its picked edit, which has a face pass of its own. Once the Session
+ * manager left out the picture before, it only says whose faces, with nothing to hold. On a phone
+ * it's an icon, so the line of the Frame's work beside it has the room.
  */
 const props = defineProps<{ picture?: Picture; index?: number }>()
 const emit = defineEmits<{ peek: [file: string | null] }>()
 const menu = usePictureMenu()
-const faces = computed(() =>
-  props.picture?.faces && !pickedEdit(props.picture) ? props.picture.faces : undefined
-)
+const faces = computed(() => props.picture && (pickedEdit(props.picture) ?? props.picture).faces)
+const other = computed(() => faces.value?.other)
 const names = computed(() => new Intl.ListFormat('en').format(faces.value?.subjects ?? []))
 const label = computed(() => (faces.value?.without ? 'Without the face pass' : 'Faces from sheets'))
 
@@ -30,9 +30,10 @@ let held = false
 function press() {
   held = false
   clearTimeout(timer)
+  if (!other.value) return
   timer = setTimeout(() => {
     held = true
-    emit('peek', faces.value!.other.upscaled ?? faces.value!.other.file)
+    emit('peek', other.value!.upscaled ?? other.value!.file)
   }, HOLD_MS)
 }
 function lift() {
@@ -89,12 +90,13 @@ async function use(without: boolean, close: () => void) {
         <template v-if="!faces.without"> · {{ names }}</template>
         <template v-else> · {{ names }}'s faces as rendered</template>
       </p>
-      <p class="text-muted">
+      <p v-if="other" class="text-muted">
         <span class="touch:hidden">Hold</span><span class="hidden touch:inline">Press and hold</span>
         to see the picture {{ faces.without ? 'with the faces from sheets' : 'before' }}.
       </p>
+      <p v-else class="text-muted" data-faces-alone>The picture before wasn't kept.</p>
       <button
-        v-if="menu"
+        v-if="menu && other"
         type="button"
         class="mt-2 flex items-center justify-center rounded border border-line px-2.5 py-1 hover:border-fg disabled:opacity-50 max-sm:w-full max-sm:py-2"
         :disabled="busy"

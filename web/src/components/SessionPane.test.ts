@@ -47,6 +47,7 @@ const contents: api.SessionContents = {
     sound: 94_000_000,
     calls: 0,
   },
+  beforeFaces: 530_000_000,
   rest: 6_000_000,
   counts: {
     frames: 3,
@@ -70,6 +71,7 @@ const options: api.KeepOptions = {
   ],
   upscales: { count: 1, size: 50_000_000 },
   edits: { count: 1, size: 20_000_000 },
+  beforeFaces: { count: 2, size: 530_000_000 },
   chosen: { count: 3, size: 800_000_000 },
   clips: [{ model: 'ltx', kinds: [{ kind: 'lead-in', count: 2, size: 520_000_000 }] }],
   threeD: [{ kind: 'scene', count: 1, size: 180_000_000 }],
@@ -125,7 +127,8 @@ describe('SessionPane', () => {
     const wrapper = await shown()
     expect(wrapper.find('[data-session-size] strong').text()).toBe('2.2 GB on disk')
     expect(wrapper.findAll('[data-part]').map((p) => p.text())).toEqual([
-      'Pictures 1.4 GB',
+      'Pictures 870 MB',
+      'Renders before the face pass 530 MB',
       'Reference sheets 6 MB',
       'Clips 520 MB',
       '3D 180 MB',
@@ -258,6 +261,23 @@ describe('SessionPane', () => {
     vi.mocked(exportSession).mockResolvedValue('saved')
     await wrapper.find('[data-export-start]').trigger('click')
     expect(vi.mocked(exportSession).mock.calls[0][4]).toEqual(left)
+  })
+
+  it('leaves out the renders before the face pass by a tick of their own under Pictures', async () => {
+    const wrapper = await shown()
+    const tick = wrapper.find('[data-keep-before-faces]')
+    expect(tick.element.closest('label')!.textContent).toContain(
+      'Renders before the face pass · 2 pictures · 530 MB',
+    )
+    await tick.setValue(false)
+    await settle()
+    expect(vi.mocked(api.previewKeep).mock.calls[0][1]).toEqual({
+      ...api.KEEP_ALL,
+      beforeFaces: true,
+    })
+    expect(wrapper.find('[data-keep-row="pictures"]').text()).toContain(
+      'no renders before the face pass',
+    )
   })
 
   it('clones all of it, or what is ticked, saying it in its label, and says why it failed', async () => {

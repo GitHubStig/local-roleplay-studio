@@ -2,7 +2,7 @@ import { assertEquals } from '@std/assert'
 import { join } from '@std/path'
 import { filesGone, keepOptions, leaving, leftOutFrom, removeLeftOut } from './keep.ts'
 import { dirSessionStore } from './session.ts'
-import { filesIn } from './sessionParts.ts'
+import { contentsOf, filesIn } from './sessionParts.ts'
 import { withTempDir } from './testing.ts'
 import { KEEP_ALL, type LeftOut } from '../shared/keep.ts'
 import type { RoleplaySession } from '../shared/roleplay.ts'
@@ -158,6 +158,7 @@ Deno.test('The reference sheets are never left out, as later pictures need them'
     imageModels: ['qwen', 'krea'],
     upscales: true,
     edits: true,
+    beforeFaces: true,
     chosenOnly: true,
     clips: { ltx: ['lead-in', 'idle-loop'] },
     threeD: ['scene'],
@@ -259,4 +260,108 @@ Deno.test('Remove the rest saves the Session without what goes, and deletes just
     )
     assertEquals(freed, 6 * 5)
     assertEquals(await store.load('r1'), after)
+  }))
+
+const pass = (other: string, without = false) => ({
+  subjects: ['Kael'],
+  seed: 8,
+  without,
+  other: { file: other },
+  timings: { find: 5, faces: 50 },
+})
+
+/**
+ * A Storyboard with face passes: Frame 1's render (faces in use, upscaled) and its edit, picked
+ * (faces in use); Frame 2's render, used without its face pass.
+ */
+const faced = () =>
+  ({
+    id: 's1',
+    kind: 'storyboard',
+    settings: { imageModel: 'qwen' },
+    sheets: [],
+    frames: [
+      {
+        index: 0,
+        pictures: [{
+          imageModel: 'qwen',
+          file: 'frame-0-aaaaaaaa.png',
+          faces: {
+            ...pass('frame-0-a0a0a0a0.png'),
+            other: { file: 'frame-0-a0a0a0a0.png', upscaled: 'frame-0-a0a0a0a0-2048.png' },
+          },
+          edits: [{
+            file: 'frame-0-cccccccc.png',
+            editModel: 'qwen-edit',
+            instructions: ['a low angle'],
+            seed: 9,
+            faces: { ...pass('edit-0-c0c0c0c0.png'), seed: 10 },
+          }],
+          picked: 1,
+        }],
+      },
+      {
+        index: 1,
+        pictures: [{
+          imageModel: 'qwen',
+          file: 'frame-1-b0b0b0b0.png',
+          faces: pass('frame-1-bbbbbbbb.png', true),
+        }],
+      },
+    ],
+  }) as unknown as Session
+
+Deno.test('Renders before the face pass go where the faces are in use, the faces saying whose', () => {
+  const left = { ...KEEP_ALL, beforeFaces: true }
+  const after = leaving(faced(), left)
+  const [first] = after.frames[0].pictures
+  assertEquals(first.faces, {
+    subjects: ['Kael'],
+    seed: 8,
+    without: false,
+    timings: { find: 5, faces: 50 },
+  })
+  assertEquals(first.edits![0].faces, {
+    subjects: ['Kael'],
+    seed: 10,
+    without: false,
+    timings: { find: 5, faces: 50 },
+  })
+  // Frame 2 uses its render: the faces beside it stay, to take back.
+  assertEquals(after.frames[1].pictures[0], faced().frames[1].pictures[0])
+  assertEquals(filesGone(faced(), after, [], left).sort(), [
+    'edit-0-c0c0c0c0.png',
+    'frame-0-a0a0a0a0-2048.png',
+    'frame-0-a0a0a0a0.png',
+  ])
+  const sizes = new Map([['frame-0-a0a0a0a0.png', 10], ['frame-0-a0a0a0a0-2048.png', 40], [
+    'edit-0-c0c0c0c0.png',
+    5,
+  ]])
+  assertEquals(keepOptions(faced(), sizes, 0).beforeFaces, { count: 2, size: 55 })
+})
+
+Deno.test("Chosen picture only keeps a face pass's whose and seed, or the render a Frame uses", () => {
+  const after = leaving(faced(), { ...KEEP_ALL, chosenOnly: true })
+  assertEquals(after.frames[0].pictures, [{
+    imageModel: 'qwen',
+    file: 'frame-0-cccccccc.png',
+    faces: { subjects: ['Kael'], seed: 10, without: false, timings: { find: 5, faces: 50 } },
+  }])
+  assertEquals(after.frames[1].pictures, [{ imageModel: 'qwen', file: 'frame-1-b0b0b0b0.png' }])
+})
+
+Deno.test('The size bar says how much of the pictures is renders before the face pass', () =>
+  withTempDir(async (dir) => {
+    const files = {
+      'frame-0-aaaaaaaa.png': 3,
+      'frame-0-a0a0a0a0.png': 10,
+      'frame-0-a0a0a0a0-2048.png': 40,
+      'frame-1-bbbbbbbb.png': 7,
+    }
+    for (const [name, size] of Object.entries(files)) {
+      await Deno.writeFile(join(dir, name), new Uint8Array(size))
+    }
+    const contents = await contentsOf(faced(), dir)
+    assertEquals([contents.parts.pictures, contents.beforeFaces], [60, 50])
   }))

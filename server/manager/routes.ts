@@ -237,9 +237,12 @@ export function managerRoutes(ctx: AppContext): Route[] {
 }
 
 /** The pictures' ticks of a choice, alone. */
-const picturesOf = ({ imageModels, upscales, edits, chosenOnly }: LeftOut): Partial<LeftOut> => ({
+const picturesOf = (
+  { imageModels, upscales, edits, beforeFaces, chosenOnly }: LeftOut,
+): Partial<LeftOut> => ({
   imageModels,
   upscales,
   edits,
+  beforeFaces,
   chosenOnly,
 })

@@ -57,7 +57,8 @@ export function useJobs(
    */
   const jobsFor = (index: number) =>
     jobs.value.filter((j) =>
-      j.frameIndex === index && !j.sheet && (j.status !== 'done' || !!j.faces?.skipped)
+      j.frameIndex === index && !j.sheet &&
+      (j.status !== 'done' || (!!j.faces?.skipped && !j.faces.untouched))
     )
   /**
    * A job of this kind is already queued or running on this Frame; for a render, by the Session's

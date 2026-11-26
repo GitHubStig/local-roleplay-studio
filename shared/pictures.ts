@@ -38,13 +38,16 @@ export interface PictureEdit extends PictureVersion {
   copied?: boolean
   /** Seconds the edit waited for another render (only if it had to) and took. */
   timings?: { queued?: number; edit: number }
+  /** Its face pass, if it had one: an edit over a face, or of the whole picture, in a Session with sheets. */
+  faces?: FacePass
 }
 
 /**
- * A picture's face pass (docs/reference-sheets-plans.md): the faces of the Subjects it shows with a
- * reference sheet repainted from their sheets, one edit each, after it rendered. The picture's own
- * files are the faces, and the render before the pass is kept beside them (`other`); "Without the
- * face pass" swaps the two, so the Frame uses the render, each keeping what was made from it.
+ * A version's face pass (docs/reference-sheets-plans.md): the faces of the Subjects it shows with a
+ * reference sheet repainted from their sheets, one edit each, after it was rendered or edited. The
+ * version's own files are the faces, and the picture before the pass is kept beside them (`other`);
+ * "Without the face pass" swaps the two, so the Frame uses the picture before, each keeping what
+ * was made from it.
  */
 export interface FacePass {
   /** Whose faces were repainted, by their names in the Look, in the order they were. */
@@ -53,8 +56,11 @@ export interface FacePass {
   seed: number
   /** The Frame uses the render without the face pass: the picture's files are the render's. */
   without: boolean
-  /** The version not in use: the render before the pass, or with `without`, the faces. */
-  other: PictureVersion
+  /**
+   * The version not in use: the picture before the pass, or with `without`, the faces. None once
+   * the Session manager left out the renders before the face pass: the faces are then all there is.
+   */
+  other?: PictureVersion
   /** Seconds it took to find the heads, and to repaint the faces. */
   timings: { find: number; faces: number }
 }

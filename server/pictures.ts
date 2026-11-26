@@ -5,7 +5,7 @@ import type { SessionStore } from './session.ts'
 import type { Session } from '../shared/session.ts'
 import { updateSession } from './update.ts'
 import { Refusal } from './refusal.ts'
-import type { Picture, PictureEdit, PictureVersion } from '../shared/pictures.ts'
+import type { FacePass, Picture, PictureEdit, PictureVersion } from '../shared/pictures.ts'
 
 /** The version of a picture that is the picture: its picked edit, or its render. */
 export const pickedVersion = (p: Picture): PictureVersion =>
@@ -46,11 +46,11 @@ export const shownVersionOf = (session: Session, index: number): PictureVersion 
 }
 
 /**
- * `image` is a version of this picture: its render, one of its edits, or the one its face pass
- * keeps beside it.
+ * `image` is a version of this picture: its render, one of its edits, or one a face pass keeps
+ * beside them.
  */
 const hasVersion = (p: Picture, image: string): boolean =>
-  p.file === image || p.faces?.other.file === image || !!p.edits?.some((e) => e.file === image)
+  [p, ...(p.edits ?? [])].some((v) => v.file === image || v.faces?.other?.file === image)
 
 const inSession = (session: Session, image: string): boolean =>
   (session.frames as PicturedFrame[]).some((f) => f.pictures.some((p) => hasVersion(p, image)))
@@ -187,16 +187,28 @@ export const versionOf = (
   ...(clips && { clips }),
 })
 
+/** A version that may have had a face pass: a render (a Picture) or an edit. */
+type Faced = PictureVersion & { faces?: FacePass }
+
 /**
- * A picture with its face pass's two versions swapped, each keeping what was made from it: the
- * render before the pass in use ("Without the face pass"), or the faces again.
+ * A render or an edit with its face pass's two versions swapped, each keeping what was made from
+ * it: the picture before the pass in use ("Without the face pass"), or the faces again. Unchanged
+ * without both versions (the one before left out by the Session manager).
  */
-export function swapFaces(p: Picture): Picture {
-  if (!p.faces) return p
-  const { file: _, upscaled: __, scene: ___, figure: ____, lito: _____, clips: ______, ...rest } = p
-  const { other, ...pass } = p.faces
-  return { ...rest, ...other, faces: { ...pass, without: !pass.without, other: versionOf(p) } }
+export function swapFaces<V extends Faced>(v: V): V {
+  if (!v.faces?.other) return v
+  const { file: _, upscaled: __, scene: ___, figure: ____, lito: _____, clips: ______, ...rest } = v
+  const { other, ...pass } = v.faces
+  return { ...rest, ...other, faces: { ...pass, without: !pass.without, other: versionOf(v) } } as V
 }
+
+/**
+ * The seed a version's image was made with, for what's made from it to be one on (ADR 0011): its
+ * face pass's last edit's while its faces are in use, else its own edit's, else the Session's
+ * (`render`), which a render is made with.
+ */
+export const seedOf = (v: Faced & { seed?: number }, render: number): number =>
+  v.faces && !v.faces.without ? v.faces.seed : v.seed ?? render
 
 /** Pictures marked out of date, after the Image Prompt they were rendered from changed. */
 export const allStale = (pictures: Picture[]): Picture[] =>
@@ -214,14 +226,25 @@ export const versionFiles = (v: PictureVersion): string[] =>
   ]
     .filter((f): f is string => !!f)
 
+/** The files of a version and of the one its face pass keeps beside it. */
+const facedFiles = (v: Faced): string[] => [
+  ...versionFiles(v),
+  ...(v.faces?.other ? versionFiles(v.faces.other) : []),
+]
+
+/** The files an edit is made of: its own (and the one its face pass keeps), and its painted area. */
+export const editFiles = (e: PictureEdit): string[] => [
+  ...facedFiles(e),
+  ...(e.mask ? [e.mask] : []),
+]
+
 /**
  * The files a picture is made of: its render's (the face pass's, and the render kept before it), and
  * each edit's with its painted area.
  */
 export const pictureFiles = (p: Picture): string[] => [
-  ...versionFiles(p),
-  ...(p.faces ? versionFiles(p.faces.other) : []),
-  ...(p.edits ?? []).flatMap((e) => [...versionFiles(e), ...(e.mask ? [e.mask] : [])]),
+  ...facedFiles(p),
+  ...(p.edits ?? []).flatMap(editFiles),
 ]
 
 /** Every file of every picture a Frame holds. */

@@ -561,6 +561,7 @@ export function createHandler(
           renderQueue,
           backendOf: heavyBackend,
           settings: () => deps.settings.load(),
+          ...(faces && { faces }),
         },
         session,
         job.frameIndex,

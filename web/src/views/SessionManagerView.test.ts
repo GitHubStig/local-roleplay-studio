@@ -65,6 +65,7 @@ beforeEach(() => {
     imageModels: [],
     upscales: { count: 0, size: 0 },
     edits: { count: 0, size: 0 },
+    beforeFaces: { count: 0, size: 0 },
     chosen: { count: 0, size: 0 },
     clips: [],
     threeD: [],
@@ -75,6 +76,7 @@ beforeEach(() => {
     size: 1,
     parts: { pictures: 1, sheets: 0, clips: 0, '3d': 0, sound: 0, calls: 0 },
     rest: 0,
+    beforeFaces: 0,
     counts: {
       frames: 2,
       pictures: 1,

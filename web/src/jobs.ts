@@ -35,6 +35,7 @@ export function jobStatus(job: Job, special?: (job: Job) => string | undefined):
   if (job.status === 'failed') return `Failed: ${job.error}`
   if (job.status === 'done') {
     if (job.export) return `Exported to ${job.export.folder}`
+    if (job.faces?.untouched) return 'Done'
     if (job.faces?.skipped) return 'Faces skipped'
     if (job.faces) return `Done · faces of ${names(job.faces.subjects)}`
     return 'Done'
@@ -60,7 +61,7 @@ export function jobStatus(job: Job, special?: (job: Job) => string | undefined):
 
 const names = (list: string[]) => new Intl.ListFormat('en').format(list)
 
-/** One of a render's two steps in a Session with reference sheets: rendered, then its faces. */
+/** One of a render's or an edit's two steps in a Session with reference sheets: made, then its faces. */
 export interface RenderStep {
   text: string
   state: 'done' | 'running' | 'skipped'
@@ -69,17 +70,20 @@ export interface RenderStep {
 }
 
 /**
- * A render's two steps, once it has reached its face pass (`Job.faces`): rendered, by its Image
- * Model, then the faces, being repainted, repainted or skipped. None for any other job.
+ * A render's or an edit's two steps, once it has reached its face pass (`Job.faces`): rendered by
+ * its Image Model, or edited (`made` says which, and by what), then the faces, being repainted,
+ * repainted or skipped. None for any other job.
  */
-export function renderSteps(job: Job, rendered: string): RenderStep[] {
+export function renderSteps(job: Job, made: string): RenderStep[] {
   const faces = job.faces
-  if (job.kind !== 'render' || !faces) return []
+  if ((job.kind !== 'render' && job.kind !== 'edit') || !faces) return []
   const missed = faces.missed?.length
-    ? `${names(faces.missed)}: no head found, left as rendered.`
+    ? `${names(faces.missed)}: no head found, left as ${
+      job.kind === 'edit' ? 'edited' : 'rendered'
+    }.`
     : undefined
   return [
-    { text: rendered, state: 'done' },
+    { text: made, state: 'done' },
     faces.skipped ? { text: 'Faces skipped', state: 'skipped', note: faces.skipped } : {
       text: `Faces · ${names(faces.subjects)}`,
       state: job.status === 'running' ? 'running' : 'done',

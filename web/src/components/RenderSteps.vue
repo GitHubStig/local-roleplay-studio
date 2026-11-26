@@ -2,19 +2,27 @@
 import { computed } from 'vue'
 import type { Job } from '../api'
 import { renderSteps } from '../jobs'
-import { useImageModels } from '../composables/useSettingsOptions'
+import { useImageModels, useSettingsOptions } from '../composables/useSettingsOptions'
 import Icon from './Icon.vue'
 
 /**
- * A render's two steps in a Session with reference sheets, once it has reached its face pass:
- * rendered (by its Image Model), then the faces being repainted, repainted, or skipped and why.
- * Nothing for any other job.
+ * A render's or an edit's two steps in a Session with reference sheets, once it has reached its
+ * face pass: rendered (by its Image Model) or edited (by its edit model), then the faces being
+ * repainted, repainted, or skipped and why. Nothing for any other job.
  */
 const props = defineProps<{ job: Job }>()
 const { labelOf } = useImageModels()
-const steps = computed(() =>
-  renderSteps(props.job, `Rendered${props.job.image ? ` · ${labelOf(props.job.image.imageModel)}` : ''}`)
-)
+const options = useSettingsOptions()
+const editModel = (id: string) => options.value?.editModels.find((m) => m.id === id)?.label ?? id
+const made = computed(() => {
+  const { job } = props
+  if (job.kind === 'edit') {
+    const model = job.edit?.model
+    return `Edited${model ? ` · ${editModel(model)}` : ''}`
+  }
+  return `Rendered${job.image ? ` · ${labelOf(job.image.imageModel)}` : ''}`
+})
+const steps = computed(() => renderSteps(props.job, made.value))
 </script>
 
 <template>

@@ -97,14 +97,21 @@ const current = computed(() => (at.value >= 0 ? pictured.value[at.value] : null)
 const picture = computed(() => current.value?.picture)
 const edits = computed(() => picture.value?.edits ?? [])
 
-/** The open Frame's edits being made or failed, in the order queued. */
-const editJobs = computed(() =>
+/** The open Frame's edit jobs not done, in the order queued. */
+const openEdits = computed(() =>
   props.jobs.filter((j) =>
     j.kind === 'edit' && j.frameIndex === current.value?.index && j.edit && j.status !== 'done'
   )
 )
-/** The edit being made, if any: no other can be asked for until it lands. */
-const inProgress = computed(() => editJobs.value.find(isOpen))
+/**
+ * Its edits being made or failed. Not one that has reached its face pass: its edit has landed, and
+ * shows as its version while its faces are repainted.
+ */
+const editJobs = computed(() => openEdits.value.filter((j) => !j.faces))
+/** The edit's job on its faces, if one is. */
+const onItsFaces = computed(() => openEdits.value.find((j) => j.faces && isOpen(j)))
+/** The edit being made, if any (its faces too): no other can be asked for until it lands. */
+const inProgress = computed(() => openEdits.value.find(isOpen))
 
 /** The edit model a job's edit is made with: the one it names, or else Settings'. */
 const jobModel = (job: Job) => job.edit?.model ?? settings.value?.editModel ?? ''
@@ -185,11 +192,14 @@ const versions = computed<VersionEntry[]>(() => {
       return [
         ...line.map((e, i): VersionEntry => {
           const version = edits.value.indexOf(e) + 1
+          // The newest, while its job repaints its faces.
+          const facing = onItsFaces.value && jobModel(onItsFaces.value) === m && i === line.length - 1
           return {
             key: String(version),
             group: modelLabel(m),
             label: `Edit ${i + 1}`,
             title: `${e.instructions.join('; ')} (${editedBy(e)})`,
+            ...(facing && { state: 'editing' as const }),
             selected: picked === version,
           }
         }),

@@ -32,6 +32,12 @@ export interface LeftOut {
   /** Every edit, with its painted area; a picked edit's picture goes back to its render. */
   edits: boolean
   /**
+   * The renders and edits as they were before their face pass, where the faces are in use (the
+   * faces stay, saying whose, with nothing to swap back to). Not where a Frame uses its picture
+   * without the pass, which is then the picture kept.
+   */
+  beforeFaces: boolean
+  /**
    * Per Frame, only the picture it shows now: the Session's Image Model's, at its picked version,
    * which becomes its Original (its other versions dropped). A Frame without one by that model is
    * left without a picture.
@@ -49,6 +55,7 @@ export const KEEP_ALL: LeftOut = {
   imageModels: [],
   upscales: false,
   edits: false,
+  beforeFaces: false,
   chosenOnly: false,
   clips: {},
   threeD: [],
@@ -71,6 +78,8 @@ export interface KeepOptions {
   upscales: Amount
   /** Edits with their painted areas. */
   edits: Amount
+  /** The renders and edits before their face pass, where the faces are in use. */
+  beforeFaces: Amount
   /** The pictures Chosen picture only keeps (one per Frame at most), and their images' size. */
   chosen: Amount
   clips: { model: string; kinds: (Amount & { kind: ClipKind })[] }[]

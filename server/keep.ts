@@ -6,13 +6,13 @@
  * Frames and their text always stay.
  */
 import { join } from '@std/path'
-import { PARTS, pictureImages } from './sessionParts.ts'
+import { beforeFacesOf, PARTS, pictureImages, picturesVersions } from './sessionParts.ts'
 import { refuseOwnModel, removeFiles } from './pictures.ts'
 import { updateSession } from './update.ts'
 import { Refusal } from './refusal.ts'
 import type { SessionStore } from './session.ts'
 import type { Session } from '../shared/session.ts'
-import type { Picture, PicturesDeleted, PictureVersion } from '../shared/pictures.ts'
+import type { PicturesDeleted } from '../shared/pictures.ts'
 import { SESSION_PARTS } from '../shared/sessionContents.ts'
 import {
   type Amount,
@@ -45,8 +45,6 @@ export function filesGone(before: Session, after: Session, paths: string[], left
   return [...gone]
 }
 
-const versionsOf = (p: Picture): PictureVersion[] => [p, ...(p.edits ?? [])]
-
 /** What a choice of ticks leaves out of Session `session` (`paths`: its files): its files, and their bytes. */
 export function goneWith(
   session: Session,
@@ -73,7 +71,7 @@ export function keepOptions(
   const byModel = Map.groupBy(pictures, (p) => p.imageModel)
   const gone = (left: Partial<LeftOut>) =>
     goneWith(session, { ...KEEP_ALL, ...left }, [], sizes).gone
-  const versions = pictures.flatMap(versionsOf)
+  const versions = pictures.flatMap(picturesVersions)
   const clips = versions.flatMap((v) => v.clips ?? [])
   const clipModels = Map.groupBy(clips, (c) => c.model)
   const threeD = (kind: ThreeDKind) => versions.map((v) => v[kind]).filter((x) => !!x)
@@ -95,6 +93,7 @@ export function keepOptions(
     })),
     upscales: amount(gone({ upscales: true }), versions.filter((v) => v.upscaled).length),
     edits: amount(gone({ edits: true }), pictures.reduce((n, p) => n + (p.edits?.length ?? 0), 0)),
+    beforeFaces: amount(gone({ beforeFaces: true }), beforeFacesOf(session).length),
     chosen: amount(
       PARTS.pictures.files(chosen),
       chosen.frames.reduce((n, f) => n + f.pictures.length, 0),
@@ -124,7 +123,7 @@ export function leftOutFrom(value: unknown): LeftOut {
   const v = value as Partial<Record<keyof LeftOut, unknown>> | null
   const bad = (what: string) => new Refusal(`What's left out isn't right: ${what}`, 400)
   if (typeof v !== 'object' || v === null) throw bad('send an object')
-  for (const key of ['upscales', 'edits', 'chosenOnly', 'calls'] as const) {
+  for (const key of ['upscales', 'edits', 'beforeFaces', 'chosenOnly', 'calls'] as const) {
     if (typeof v[key] !== 'boolean') throw bad(`${key} must be true or false`)
   }
   if (!isStrings(v.imageModels)) throw bad('imageModels must be a list of names')

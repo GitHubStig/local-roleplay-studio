@@ -3,6 +3,7 @@
  * its edge softened, white on black, as the 2026-11-25 bench found showed no seam
  * (docs/reference-sheets-plans.md, stage 0: 20%, blurred 24 px at 1024²).
  */
+import decodePng from '@jsquash/png/decode.js'
 import encodePng from '@jsquash/png/encode.js'
 import type { Head } from '../heads/heads.ts'
 
@@ -51,6 +52,28 @@ export async function headArea(
     rgba[i * 4 + 3] = 255
   }
   return new Uint8Array(await encodePng(new ImageData(rgba, width, height)))
+}
+
+/**
+ * Whether an area painted for an edit (`png`, white repainted, at any size) touches `box`
+ * (thousandths): a pixel in the box more than half white. So an edit's face pass repaints only the
+ * heads its edit may have changed (docs/reference-sheets-plans.md, stage 5).
+ */
+export async function touches(png: Uint8Array<ArrayBuffer>, box: Head['box']): Promise<boolean> {
+  const { data, width, height } = await decodePng(
+    png.buffer.slice(png.byteOffset, png.byteOffset + png.byteLength),
+  )
+  const [x1, y1, x2, y2] = box
+  const left = Math.floor((x1 / 1000) * width)
+  const right = Math.ceil((x2 / 1000) * width)
+  const top = Math.floor((y1 / 1000) * height)
+  const bottom = Math.ceil((y2 / 1000) * height)
+  for (let y = Math.max(0, top); y < Math.min(height, bottom); y++) {
+    for (let x = Math.max(0, left); x < Math.min(width, right); x++) {
+      if (data[(y * width + x) * 4] > 127) return true
+    }
+  }
+  return false
 }
 
 /** One box blur along rows (`across`) or columns, its edges held at what they are. */

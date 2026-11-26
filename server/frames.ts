@@ -10,8 +10,13 @@ import {
   swapFaces,
   withPicture,
 } from './pictures.ts'
-import { type FaceWay, NO_ONE_WITH_A_SHEET, shownSheets } from './faces/facePass.ts'
-import type { Picture } from '../shared/pictures.ts'
+import {
+  type FaceWay,
+  NO_ONE_WITH_A_SHEET,
+  NO_ONE_WITH_A_SHEET_EDITED,
+  shownSheets,
+} from './faces/facePass.ts'
+import type { FacePass, Picture } from '../shared/pictures.ts'
 import type { ImageGenerator, ImageSize } from './images/imageGenerator.ts'
 import { anyImageModel } from './images/imageModels.ts'
 import type { Upscaler } from '../shared/images.ts'
@@ -20,7 +25,8 @@ import type { Previews } from './previews.ts'
 import type { HeavyJob } from './machine.ts'
 import { RenderQueue } from './renderQueue.ts'
 import type { SessionStore } from './session.ts'
-import type { Session } from '../shared/session.ts'
+import type { Session, StoryboardFrame } from '../shared/session.ts'
+import type { RoleplayImage } from '../shared/roleplay.ts'
 import { DEFAULT_SETTINGS, renderSettings } from './settings.ts'
 import type { Settings } from '../shared/settings.ts'
 import { GoneError } from './update.ts'
@@ -210,12 +216,102 @@ export async function renderImage(
   }
 }
 
-/** Who a Frame shows and how they look, for its face pass (`replacePicture`). */
+/** Who a Frame shows and how they look, for its face pass (`passFaces`). */
 export interface FacesOf {
   /** The Look's Subjects it shows, by name, the most prominent first. */
   shown: string[]
   /** Its expression sentence, '' when not known. */
   expression: string
+}
+
+/**
+ * Who Frame `index` shows and how they look, for the face pass of an edit of its picture: a
+ * Storyboard's from its plan, a Roleplay's from its Art Agent; none for a Chain, which has no sheets,
+ * or a Frame not yet written.
+ */
+export function facesOfFrame(session: Session, index: number): FacesOf | undefined {
+  if (session.kind === 'chain') return undefined
+  const frame = session.frames[index]
+  if (!frame?.image) return undefined
+  const shown = session.kind === 'roleplay'
+    ? (frame.image as RoleplayImage).shown
+    : (frame as StoryboardFrame).shown
+  return { shown, expression: frame.image.expression }
+}
+
+/** What the face pass is given of a picture just made and saved: a render, or an edit. */
+export interface MadeForFaces {
+  /** Its image, a PNG in the Session's folder. */
+  file: string
+  /** The seed it was made with. */
+  seed: number
+  /** It's an edit. */
+  edited?: boolean
+  /** An edit's painted area: only the heads it touches are repainted. None for all of the picture. */
+  area?: string
+  /** What an edit was told, for its face pass to keep (`face-edited.md`): an edit of a painted area's. */
+  change?: string
+}
+
+/**
+ * The face pass of a picture just made and saved (`made`, a render or an edit of Frame `index`), in
+ * a Storyboard or a Roleplay with reference sheets: the faces of the ticked Subjects it shows
+ * (`faces`) repainted from their sheets, then saved onto it with `onto` (the Session as it is now,
+ * and the pass, its `other` the picture before), so it keeps both. Answers the Session as saved, or
+ * undefined where it left the picture as it was: a Session without sheets, or (saying why, as a
+ * `faces` step) one showing no one with a sheet, whose heads weren't found, or an edit that touched
+ * no face. A failure or a Cancel leaves the picture as it was too.
+ */
+export async function passFaces<S extends Session>(
+  deps: Pick<FrameDeps, 'store' | 'faces'>,
+  session: S,
+  index: number,
+  made: MadeForFaces,
+  faces: FacesOf,
+  emit: (event: ProgressEvent) => void,
+  signal: AbortSignal,
+  save: (change: (s: S) => S) => Promise<S>,
+  onto: (latest: S, pass: FacePass) => S,
+): Promise<S | undefined> {
+  if (session.kind === 'chain' || !session.settings.sheets) return undefined
+  const as = made.edited ? 'edited' : 'rendered'
+  const skip = (skipped: string, untouched?: boolean) => {
+    emit({ type: 'faces', faces: { subjects: [], skipped, ...(untouched && { untouched }) } })
+    return undefined
+  }
+  const sheets = shownSheets(session.sheets, faces.shown)
+  if (!sheets.length) return skip(made.edited ? NO_ONE_WITH_A_SHEET_EDITED : NO_ONE_WITH_A_SHEET)
+  if (!deps.faces) return skip(`Nothing here can find heads: saved as ${as}.`)
+  if (!made.file.endsWith('.png')) return skip(`A placeholder picture: saved as ${as}.`)
+  const done = await deps.faces.repaint(
+    {
+      session,
+      index,
+      file: made.file,
+      seed: made.seed,
+      ...(made.edited && { edited: true }),
+      ...(made.area && { area: made.area }),
+      ...(made.change && { change: made.change }),
+      sheets,
+      expression: faces.expression,
+    },
+    emit,
+    signal,
+  )
+  if ('skipped' in done) return skip(done.skipped, done.untouched)
+  const { file, pass, missed } = done.faced
+  try {
+    signal.throwIfAborted()
+    // The faces are the picture now, the one before kept beside them with what was made from it.
+    const updated = await save((latest) =>
+      onto(latest, { ...pass, without: true, other: { file } })
+    )
+    emit({ type: 'faces', faces: { subjects: pass.subjects, ...(missed.length && { missed }) } })
+    return updated
+  } catch (err) {
+    await removeFiles(deps.store.dir(session.id), [file])
+    throw err
+  }
 }
 
 /**
@@ -227,9 +323,7 @@ export interface FacesOf {
  *
  * In a Session with reference sheets, the render is then given its face pass (`faces`, the Frame's
  * who and how): saved first, so it shows while its faces are repainted, then saved again with
- * them, the render kept beside them. A Frame that shows no one with a sheet, or whose heads aren't
- * found, keeps its render, and its job says so; one whose face pass fails or is cancelled keeps it
- * too.
+ * them, the render kept beside them (`passFaces`).
  */
 export async function replacePicture<S extends Session>(
   deps: RenderDeps,
@@ -266,48 +360,28 @@ export async function replacePicture<S extends Session>(
     await removeImage(dir, name)
     throw err
   }
-  if (!faces || saved.session.kind === 'chain' || !saved.session.settings.sheets) return saved
-  const sheets = shownSheets(saved.session.sheets, faces.shown)
-  const skip = (skipped: string) => {
-    emit({ type: 'faces', faces: { subjects: [], skipped } })
-    return saved
-  }
-  if (!sheets.length) return skip(NO_ONE_WITH_A_SHEET)
-  if (!deps.faces) return skip('Nothing here can find heads: saved as rendered.')
-  if (!rendered.file.endsWith('.png')) return skip('A placeholder picture: saved as rendered.')
-  const done = await deps.faces.repaint(
-    {
-      session: saved.session,
-      index,
-      file: rendered.file,
-      seed: session.seed,
-      sheets,
-      expression: faces.expression,
-    },
+  if (!faces) return saved
+  let frame!: S['frames'][number]
+  const updated = await passFaces(
+    deps,
+    saved.session,
+    index,
+    { file: rendered.file, seed: session.seed },
+    faces,
     emit,
     signal,
-  )
-  if ('skipped' in done) return skip(done.skipped)
-  const { file, pass, missed } = done.faced
-  try {
-    signal.throwIfAborted()
-    let frame!: S['frames'][number]
-    const updated = await save((latest) => {
-      // The faces are the picture now, the render kept beside them with what was made from it.
+    save,
+    (latest, pass) => {
       const changed = changeRenderedPicture(
         latest,
         rendered.file,
-        (p) => swapFaces({ ...p, faces: { ...pass, without: true, other: { file } } }),
+        (p) => swapFaces({ ...p, faces: pass }),
       )
       frame = followFrame<S['frames'][number]>(changed.frames, index, createdAt)!
       return changed
-    })
-    emit({ type: 'faces', faces: { subjects: pass.subjects, ...(missed.length && { missed }) } })
-    return { session: updated, frame }
-  } catch (err) {
-    await removeFiles(dir, [file])
-    throw err
-  }
+    },
+  )
+  return updated ? { session: updated, frame } : saved
 }
 
 /** Deletes whatever image a generator may have written under `name`, e.g. after a Cancel. */

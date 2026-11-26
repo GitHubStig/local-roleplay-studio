@@ -7,7 +7,7 @@
  */
 import { join } from '@std/path'
 import type { Session, SheetPicture } from '../shared/session.ts'
-import type { Picture, PictureEdit, PictureVersion } from '../shared/pictures.ts'
+import type { FacePass, Picture, PictureEdit, PictureVersion } from '../shared/pictures.ts'
 import type { LeftOut } from '../shared/keep.ts'
 import {
   SESSION_PARTS,
@@ -76,12 +76,32 @@ const CALL_LOG = /^calls\/(frame-\d+|setup)\.json$/
 
 /** Every picture of every Frame, by every Image Model. */
 const picturesOf = (session: Session): Picture[] => session.frames.flatMap((f) => f.pictures)
-/** A picture's versions: its render (and the one its face pass keeps beside it), and each edit. */
-const picturesVersions = (p: Picture): PictureVersion[] => [
-  p,
-  ...(p.faces ? [p.faces.other] : []),
-  ...(p.edits ?? []),
-]
+/** A picture's versions: its render and each edit, each with the one its face pass keeps beside it. */
+export const picturesVersions = (p: Picture): PictureVersion[] =>
+  [p, ...(p.edits ?? [])].flatMap((v) => [v, ...(v.faces?.other ? [v.faces.other] : [])])
+
+/**
+ * A picture's versions as they were before their face pass, where the faces are in use: what
+ * "Renders before the face pass" leaves out. Not where a Frame uses its version without the pass,
+ * whose `other` is the faces.
+ */
+const beforeFaces = (p: Picture): PictureVersion[] =>
+  [p, ...(p.edits ?? [])].flatMap((v) => v.faces?.other && !v.faces.without ? [v.faces.other] : [])
+
+/** Every render and edit before its face pass in a Session, where the faces are in use. */
+export const beforeFacesOf = (session: Session): PictureVersion[] =>
+  picturesOf(session).flatMap(beforeFaces)
+
+/** The images of the renders before the face pass (and their upscales), said apart in the size bar. */
+export const beforeFacesImages = (session: Session): string[] =>
+  beforeFacesOf(session).flatMap((v) => [v.file, v.upscaled]).filter((f): f is string => !!f)
+
+/** A render or an edit without the picture its face pass keeps beside the faces in use. */
+function withoutBefore<V extends PictureVersion & { faces?: FacePass }>(v: V): V {
+  if (!v.faces?.other || v.faces.without) return v
+  const { other: _, ...faces } = v.faces
+  return { ...v, faces }
+}
 /** Every version of every picture: each render and each edit. */
 const versionsOf = (session: Session): PictureVersion[] =>
   picturesOf(session).flatMap(picturesVersions)
@@ -102,21 +122,32 @@ const changeVersions = (
   change: <V extends PictureVersion>(v: V) => V,
 ): Session =>
   changePictures(session, (p) => {
-    const changed = change(p)
-    const faced = p.faces
-      ? { ...changed, faces: { ...p.faces, other: change(p.faces.other) } }
-      : changed
-    return p.edits ? { ...faced, edits: p.edits.map((e) => change(e) as PictureEdit) } : faced
+    const both = <V extends PictureVersion & { faces?: FacePass }>(v: V): V => {
+      const changed = change(v)
+      return v.faces?.other
+        ? { ...changed, faces: { ...v.faces, other: change(v.faces.other) } }
+        : changed
+    }
+    const changed = both(p)
+    return p.edits ? { ...changed, edits: p.edits.map(both) } : changed
   })
 
 /**
+ * A face pass as a picture made its Original keeps it: whose faces, and its seed for the edits
+ * after, while its faces are in use, without the picture before; none where the Frame used that.
+ */
+const chosenFaces = (faces: FacePass | undefined) =>
+  faces && !faces.without ? withoutBefore({ file: '', faces }).faces : undefined
+
+/**
  * The picture as it shows now, made its Original: its picked version's files, its history gone (the
- * render before its face pass too, unless the Frame uses it, when it's the picture kept).
+ * picture before its face pass too, unless the Frame uses it, when it's the picture kept).
  */
 function asChosen(p: Picture): Picture {
   const { edits: _, picked, faces: ___, ...render } = p
   const edit = picked ? p.edits?.[picked - 1] : undefined
-  if (!edit) return render
+  const faces = chosenFaces(edit ? edit.faces : p.faces)
+  if (!edit) return { ...render, ...faces && { faces } }
   const { file, upscaled, scene, figure, lito, clips } = edit
   const { timings: __, ...kept } = render
   return {
@@ -129,6 +160,7 @@ function asChosen(p: Picture): Picture {
     ...figure && { figure },
     ...lito && { lito },
     ...clips && { clips },
+    ...faces && { faces },
   }
 }
 
@@ -166,6 +198,12 @@ export const PARTS: Record<SessionPart, PartDeclaration> = {
         s = changePictures(s, (p) => left.imageModels.includes(p.imageModel) ? null : p)
       }
       if (left.edits) s = changePictures(s, ({ edits: _, picked: __, ...p }) => p)
+      if (left.beforeFaces) {
+        s = changePictures(s, (p) => {
+          const kept = withoutBefore(p)
+          return p.edits ? { ...kept, edits: p.edits.map(withoutBefore) } : kept
+        })
+      }
       if (left.upscales) {
         s = changeVersions(s, (v) => {
           const kept = { ...v }
@@ -356,5 +394,13 @@ export async function contentsOf(session: Session, dir: string): Promise<Session
     calls: 0,
     ...Object.assign({}, ...counted),
   }
-  return { size: rest + SESSION_PARTS.reduce((n, p) => n + parts[p], 0), parts, rest, counts }
+  const sizes = new Map(files.map((f) => [f.path, f.size]))
+  const before = beforeFacesImages(session).reduce((n, f) => n + (sizes.get(f) ?? 0), 0)
+  return {
+    size: rest + SESSION_PARTS.reduce((n, p) => n + parts[p], 0),
+    parts,
+    beforeFaces: before,
+    rest,
+    counts,
+  }
 }

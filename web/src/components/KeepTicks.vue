@@ -45,6 +45,7 @@ const picturesSummary = computed(() => {
   const parts = [`${keptModels.value.length} of ${plural(o.imageModels.length, 'Image Model')}`]
   if (o.upscales.count && left.value.upscales) parts.push('no upscales')
   if (o.edits.count && left.value.edits) parts.push('no edits')
+  if (o.beforeFaces.count && left.value.beforeFaces) parts.push('no renders before the face pass')
   return parts.join(', ')
 })
 const picturesSize = computed(() => {
@@ -54,7 +55,8 @@ const picturesSize = computed(() => {
     0,
     keptModels.value.reduce((n, m) => n + m.pictures, 0) -
       (left.value.upscales ? after.value.upscales.size : 0) -
-      (left.value.edits ? after.value.edits.size : 0),
+      (left.value.edits ? after.value.edits.size : 0) -
+      (left.value.beforeFaces ? after.value.beforeFaces.size : 0),
   )
 })
 
@@ -134,6 +136,15 @@ const keptOf = <K extends string>(all: { kind: K }[], gone: K[], labels: Record<
           />
           {{ labelOf(m.model) }}<template v-if="m.model === options.imageModel"> (the Session's)</template>
           <span class="text-muted">· {{ amount(m, 'picture') }}</span>
+        </label>
+        <label
+          v-if="options.beforeFaces.count"
+          class="flex items-center gap-2"
+          :class="{ 'text-muted': !after.beforeFaces.count }"
+          title="Each picture as it was before its faces were repainted from their sheets; without them, a picture's Faces chip has nothing to hold"
+        >
+          <input type="checkbox" :checked="!left.beforeFaces" :disabled="!after.beforeFaces.count" data-keep-before-faces @change="change({ beforeFaces: !($event.target as HTMLInputElement).checked })" />
+          Renders before the face pass <span class="text-muted">· {{ amount(after.beforeFaces, 'picture') }}</span>
         </label>
         <label v-if="options.upscales.count" class="flex items-center gap-2" :class="{ 'text-muted': !after.upscales.count }">
           <input type="checkbox" :checked="!left.upscales" :disabled="!after.upscales.count" data-keep-upscales @change="change({ upscales: !($event.target as HTMLInputElement).checked })" />

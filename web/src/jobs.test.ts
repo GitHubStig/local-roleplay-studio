@@ -91,3 +91,29 @@ describe('A render with a face pass', () => {
     )
   })
 })
+
+describe('An edit with a face pass', () => {
+  const edit = (faces: Job['faces']): Job => ({
+    id: 'j2',
+    kind: 'edit',
+    frameIndex: 3,
+    status: 'done',
+    createdAt: '',
+    machine: 'here',
+    edit: { instruction: 'A low angle.' },
+    faces,
+  })
+
+  it('says its two steps: edited, then whose faces', () => {
+    const job = edit({ subjects: ['Kael'], missed: ['Elara Vance'] })
+    expect(renderSteps(job, 'Edited')).toEqual([
+      { text: 'Edited', state: 'done' },
+      { text: 'Faces · Kael', state: 'done', note: 'Elara Vance: no head found, left as edited.' },
+    ])
+  })
+
+  it('is plainly done when its area touched no face', () => {
+    const job = edit({ subjects: [], skipped: 'The edit touched no face.', untouched: true })
+    expect(jobStatus(job)).toBe('Done')
+  })
+})

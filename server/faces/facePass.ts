@@ -30,7 +30,7 @@ import { loadPrompt } from '../promptFiles.ts'
 import { RenderQueue } from '../renderQueue.ts'
 import type { SessionStore } from '../session.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
-import { headArea } from './area.ts'
+import { headArea, touches } from './area.ts'
 
 /** A Subject the Frame shows that has a sheet to repaint it from: ticked, and made. */
 export interface ShownSheet {
@@ -39,23 +39,33 @@ export interface ShownSheet {
   made: SheetPicture
 }
 
-/** What a face pass is asked to do: a Frame's render, and who it shows with a sheet. */
+/** What a face pass is asked to do: a Frame's render or edit, and who it shows with a sheet. */
 export interface FacesRequest {
   session: Session
   index: number
-  /** The render, a PNG in the Session's folder. */
+  /** The render or the edit, a PNG in the Session's folder. */
   file: string
-  /** The seed it was rendered with: the first edit is one on (ADR 0011). */
+  /** It's an edit, not a render, as what's skipped says. */
+  edited?: boolean
+  /** The seed it was made with: the first face edit is one on (ADR 0011). */
   seed: number
+  /**
+   * For an edit, the area painted for it (a PNG in the Session's folder): only the heads it
+   * touches are repainted, as the rest are as they were. None for a render, or an edit of all of
+   * the picture (a camera move), whose every head is repainted.
+   */
+  area?: string
   sheets: ShownSheet[]
   /** The Frame's expression sentence, '' when not known. */
   expression: string
+  /** For an edit, what it was told: the face pass keeps that change rather than the expression named. */
+  change?: string
 }
 
 /** What a face pass did: the picture with its faces repainted, or why it left it as rendered. */
 export type FacesDone =
   | { faced: { file: string; pass: Omit<FacePass, 'without' | 'other'>; missed: string[] } }
-  | { skipped: string }
+  | { skipped: string; untouched?: boolean }
 
 /** Its progress: the render's own events, and the step's (`faces`) as it begins. */
 export type FacesEmit = (event: ProgressEvent) => void
@@ -76,6 +86,8 @@ export function shownSheets(sheets: readonly Sheet[], shown: readonly string[]):
 
 /** Why a Frame's faces are left as rendered when it shows no one with a sheet. */
 export const NO_ONE_WITH_A_SHEET = 'No one with a sheet in it: saved as rendered.'
+/** The same, for an edit. */
+export const NO_ONE_WITH_A_SHEET_EDITED = 'No one with a sheet in it: saved as edited.'
 
 export interface TwoPassDeps {
   store: SessionStore
@@ -101,6 +113,7 @@ export function twoPasses(deps: TwoPassDeps): FaceWay {
       const dir = deps.store.dir(req.session.id)
       const ask: Omit<HeadRequest, 'image'> = { dir, ...(backend && { backend }) }
       const step = (faces: FacesStep) => emit({ type: 'faces', faces })
+      const as = req.edited ? 'edited' : 'rendered'
       // The masks and the edits on the way, removed once the pass ends; the last edit is kept.
       const made: string[] = []
       let picture = req.file
@@ -125,7 +138,18 @@ export function twoPasses(deps: TwoPassDeps): FaceWay {
           .map((s) => s.subject)
         if (!found.length) {
           const names = new Intl.ListFormat('en', { type: 'disjunction' }).format(missed)
-          return { skipped: `No head found of ${names}: saved as rendered.` }
+          return { skipped: `No head found of ${names}: saved as ${as}.` }
+        }
+        if (req.area) {
+          const area = await Deno.readFile(join(dir, req.area))
+          const touched = await Promise.all(found.map((f) => touches(area, f.head.box)))
+          found.splice(0, found.length, ...found.filter((_, i) => touched[i]))
+          if (!found.length) {
+            return {
+              skipped: 'The edit touched no face: its faces are as they were.',
+              untouched: true,
+            }
+          }
         }
         step({ subjects: found.map((f) => f.sheet.subject) })
         started = performance.now()
@@ -143,7 +167,7 @@ export function twoPasses(deps: TwoPassDeps): FaceWay {
               image: picture,
               mask,
               references: [viewFor(sheet.made, head.facing)],
-              instruction: await faceInstruction(sheet.subject, req.expression),
+              instruction: await faceInstruction(sheet.subject, req.expression, req.change),
               seed,
               strength: deps.strength ?? faceStrength(model),
               quantize: now.editQuantize,
@@ -219,8 +243,17 @@ export function faceStrength(model: EditModel): number {
   return typeof faces === 'object' ? faces.strength : 1
 }
 
-/** The face pass's instruction for one Subject: its expression named, where it's known. */
-export const faceInstruction = (name: string, expression: string): Promise<string> =>
-  expression.trim()
+/**
+ * The face pass's instruction for one Subject: after an edit, the change it made named (`change`);
+ * else its expression named, where it's known.
+ */
+export const faceInstruction = (
+  name: string,
+  expression: string,
+  change?: string,
+): Promise<string> =>
+  change?.trim()
+    ? loadPrompt('faces/face-edited', { name, change: change.trim().replace(/([^.!?])$/, '$1.') })
+    : expression.trim()
     ? loadPrompt('faces/face', { name, expression: expression.trim().replace(/\.$/, '') })
     : loadPrompt('faces/face-unknown', { name })

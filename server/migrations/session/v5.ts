@@ -2,7 +2,7 @@
  * `session.json` at version 5 (2026-11-25): reference sheets (docs/reference-sheets-plans.md). A
  * Session says whether it has them (`settings.sheets`), a Storyboard or a Roleplay keeps a sheet per
  * Subject of its Look, each written Frame keeps its expression sentence apart, for the face pass
- * to name, and a picture keeps its face pass (`faces`, added with stage 4 while no Session had one). A full copy of version 4's types, so a later change to `shared/` leaves it as it was;
+ * to name, and a picture and each edit keep their face pass (`faces`, added with stages 4 and 5 while no Session had one). A full copy of version 4's types, so a later change to `shared/` leaves it as it was;
  * what each field means is in `shared/`. The change from version 4 is marked "v5".
  */
 import type { V4 } from './v4.ts'
@@ -93,13 +93,16 @@ interface PictureEdit extends PictureVersion {
   mask?: string
   copied?: boolean
   timings?: { queued?: number; edit: number }
+  /** v5: added */
+  faces?: FacePass
 }
 
+/** v5: added */
 interface FacePass {
   subjects: string[]
   seed: number
   without: boolean
-  other: PictureVersion
+  other?: PictureVersion
   timings: { find: number; faces: number }
 }
 
@@ -110,6 +113,7 @@ interface Picture extends PictureVersion {
   timings?: { queued?: number; image: number }
   edits?: PictureEdit[]
   picked?: number
+  /** v5: added */
   faces?: FacePass
 }
 
