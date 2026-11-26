@@ -23,7 +23,7 @@ An Image Model draws a person it doesn't know by name a little differently in ev
 - **Words alone.** What can be named (a hairstyle, a scar, a garment) holds best in the Look's words, which the render follows: the Princess's side buns held in all four Frames from the words alone, ~18 s a Frame. A sheet earns its cost for faces the model doesn't know by name (stage 4).
 - **The whole sheet as the reference**, with a count of the heads after to catch a pasted sheet: the face that barely moves stayed as rendered; one view needs no count.
 - **Other finders**: MediaPipe, RT-DETR, SAM 3.1, SDPose were faster but none says whose a head is, and some missed heads or boxed lamps (stage 0).
-- **Checking the backdrop, or turning down a sheet with the style's lamp in it**: every backdrop was read as dark and plain, and whether a lamp harms the face pass is untried, so the check notes it only.
+- **Checking the backdrop, or turning down a sheet with the style's lamp in it**: every backdrop was read as dark and plain, and a lamp in a sheet wasn't pasted in by the face pass, only its warm light on some faces (2026-11-26, [bench](../bench/reference-sheets/2026-11-26/lamp/README.md)), so the check notes it only.
 - **Other edit models**: FLUX.3 Klein's face edit barely moved the face, FIBO 2.0 Edit Turbo's drew it larger (2026-11-22); offered greyed, saying why.
 - **A depth map for objects**: holds the shape at the sheet's angle, not the scene's; dropped (stage 0).
 

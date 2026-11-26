@@ -110,7 +110,8 @@ const turn = (facing?: Facing) =>
  * view nearest a head's turn by its place (a thing's turns Qwen3-VL doesn't read, so only its
  * three are checked); and no writing, which the bench's FIBO 2.0 Turbo sheets had (a name). The
  * backdrop isn't checked: every one of the 42 was read as dark and plain. Nor what else is in it
- * (an oil lamp from the style): whether that harms the face pass is untried.
+ * (an oil lamp from the style): it isn't pasted in by the face pass, though its light can come with
+ * the face (docs/bench/reference-sheets/2026-11-26/lamp/).
  */
 export function sheetFlaw(look: SheetLook, name: string): string | undefined {
   const flaws: string[] = []
