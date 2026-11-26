@@ -55,6 +55,18 @@ silicon, 48 GB) and a Windows PC (RTX 4070, 12 GB, 16 GB of RAM), sharing this r
   Say so when a change can't be run where it's made, so the other machine can check it.
 - **Measure memory in a bench with `docs/bench/memory.ts`** (`availableRam`, `watchMemory`), not Deno's `systemMemoryInfo()` directly: its `available` is always 0 on Windows, which has read as "no RAM free" more than once.
 
+## Running and benching
+
+- **Editing `server/` or `shared/` restarts the owner's dev server** (`deno task dev`, `--watch`): a picture running starts again, a streaming Reply ends. Before editing there, read `queue.json` (`sessions[].jobs[]`, each with a `status`) and make sure nothing is queued or running. Prompt files are read at each call, so editing one doesn't restart it.
+- **Stop only what you started, by its own id**: never by name (`pkill`, `killall`), which has taken down the owner's editor.
+- **To point work elsewhere for a quick run** (say `runOn.edits` at the PC), change Settings through the API (`GET /api/settings`, change it, `PUT` it back), put it back the same way after, and say so. A copy of `settings.json` from disk may be an older version, which the `PUT` refuses: it's migrated only as it's read.
+- **Before saying a run is going, check it's moving**: the backend's own queue (ComfyUI's `/queue`), the log's latest line and time, the process list. Run long work on the Mac under `caffeinate -i`, write loops as bash scripts, and wait with a background `until` loop rather than chained sleeps.
+- **Before designing a bench, read what's recorded**: the part's research file and every earlier bench README for it, listing what's known about the variant you'd run. The wording, not the model, has been the cause more than once, and findings already recorded have been benched again by mistake.
+- **Benches run the app's own code** (its prompt builders, clients and passes) rather than copies of it, so they test what the app does. Where a script must read a prompt file itself, strip its `<!-- -->` note with a real parser: a `sed` range deleted a whole question once, as the note opened and closed on one line.
+- **Judge pictures at full size, over several seeds, and by eye**, before trusting a model's answer, a collage or a pixel difference.
+- **A change isn't done until it has run through the app**, and a screen it changes has been looked at (`deno task shot`): real runs keep finding what the tests can't (a message that overran its menu, a pass that undid an earlier edit).
+- **Bench scripts under `docs/` aren't formatted or checked by the tasks**: `deno check` them yourself.
+
 ## Conventions
 
 - `deno task test` runs the server's tests (Deno) and the web's (Vitest); `deno task check` checks the formatting (`deno fmt --check`), lints both (`deno lint`, which doesn't read `.vue` files) and type-checks them; `deno fmt` formats what it flags. Run tests and the check before asking to commit.

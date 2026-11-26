@@ -32,6 +32,9 @@
  *   eval:EXPRESSION             prints what the expression evaluates to in the page
  *   shot:NAME                   saves a screenshot named NAME
  * Without a shot step, one screenshot is saved once the steps are done.
+ * In zsh, quote each step ('click:[data-x]'), or the brackets are read as a glob. A click on
+ * something low in a panel can scroll the window itself, leaving a shot half empty: scroll the panel
+ * first ('eval:document.querySelector("[data-x]").scrollIntoView({block:"center"})').
  *
  * The browser is Playwright's Chromium headless shell (`npx playwright-core install
  * chromium-headless-shell` once per machine, if it says it's missing).

@@ -9,7 +9,9 @@
  *
  *   deno run -A passes.ts <comfy address> <session folder> <out> <seeds> <variant> <picture>...
  *
- * Each picture is `edit.png:Name=identity=sheet.png::expression::change`.
+ * Each picture is `edit.png:Name=identity=sheet.png::expression::change`, with more `:Name=…` for
+ * more people. The sheets (and their views) are copied from the session folder; each picture must
+ * already be in `out`.
  */
 import { join } from 'node:path'
 import { comfyuiImageGenerator } from '../../../../../server/images/comfyui/comfyui.ts'
