@@ -8,9 +8,10 @@
  *          wetness or anything worn, exactly as it is."
  *
  * With `marks` 2 instead, the sentence added is "Keep what is on <name> in image 1: <WORN>", the
- * Frame's clothing sentence given as WORN.
+ * Frame's clothing sentence given as WORN; with 3, the instruction is replaced by one for a thing
+ * (`../object/`).
  *
- *   deno run -A passes.ts <comfy address> <session folder> <out> <seeds> <label> <marks 0|1|2> <picture>...
+ *   deno run -A passes.ts <comfy address> <session folder> <out> <seeds> <label> <marks 0|1|2|3> <picture>...
  *
  * Each picture is `file.png:Name=sheet.png::expression::change` (`change` empty for a render; for
  * an edit, its instruction, or every instruction in its line, oldest first, for "earlier"), with
@@ -42,6 +43,8 @@ const wrapped: ImageGenerator = {
       ? `${req.instruction} Keep whatever is on ${name}'s skin and head in image 1, such as marks, wounds, dirt, wetness or anything worn, exactly as it is.`
       : marks === '2' && name
       ? `${req.instruction} Keep what is on ${name} in image 1: ${Deno.env.get('WORN')}`
+      : marks === '3' && name
+      ? `Give ${name}, the thing in the marked area of image 1, the look of the one in image 2: its shape, materials and details. Keep how it is lit and its state exactly as in image 1, the way it is turned, and everything else.`
       : req.instruction
     told.push(instruction)
     return generator.edit({ ...req, instruction }, signal, onProgress, onDownload)

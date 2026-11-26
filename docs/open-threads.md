@@ -10,8 +10,6 @@ What the app does or could do: features, models it offers, how it's installed an
 - **Reference sheets** (built 2026-11-26: [ADR 0045](adr/0045-faces-are-repainted-from-a-reference-sheet.md), [design/pictures.md](design/pictures.md)). A sheet of each Subject repaints its faces after every render and edit. What's left of it, each [in detail](research/people-in-pictures.md#still-open):
   - **Without Qwen-Image 2.1.** The face pass needs its edit and its Qwen3-VL; other edit models and finders can come later.
   - **One pass**, or the player choosing: bench it again when an edit model is added or upgraded, as two passes are a workaround for today's pull.
-  - **A Storyboard's marks on a face**: a Roleplay's pass names the Frame's clothing sentence, which keeps a bruise; a Storyboard's Frames don't keep that sentence apart (needs `session.json` v6).
-  - **An object's sheet in the face pass** (its instruction speaks of a face and hair): untried through the app.
   - **The style's lamp in a sheet**: the check notes it; whether it harms the pass is untried.
   - **The face edit's caches, what's left**: a Mac's ComfyUI at `gpu`, and the player's own Qwen-Image 2.1 edits on mflux with the step cache against without.
   - **A Storyboard's plan writes thin identities** for someone the Scenario leaves vague (no age, build or hair; an expression or clothing instead).

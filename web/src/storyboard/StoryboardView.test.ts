@@ -77,6 +77,7 @@ const frame = (
     image: {
       body,
       expression: '',
+      clothing: '',
       prompt: promptFor(index),
       ...(blocked && { blocked }),
       written: { model: 'x', seconds: 1 },

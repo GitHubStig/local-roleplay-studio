@@ -211,6 +211,7 @@ describe('App navigation', () => {
         image: {
           body: 'Body.',
           expression: '',
+          clothing: '',
           prompt: promptFor(0),
           written: { model: 'x', seconds: 1 },
         },

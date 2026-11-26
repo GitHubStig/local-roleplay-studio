@@ -95,8 +95,11 @@ export interface Scripts {
   changes?: (string | Error)[]
 }
 
-/** A reply as a test scripts it: its expression sentence left out unless it matters. */
-type WithoutExpression<T> = Omit<T, 'expression'> & { expression?: string }
+/** A reply as a test scripts it: its expression and clothing sentences left out unless they matter. */
+type WithoutExpression<T> = Omit<T, 'expression' | 'clothing'> & {
+  expression?: string
+  clothing?: string
+}
 
 /** The sentences the scripted Text Model writes for Frame `index` when none are scripted. */
 export const writtenBody = (index: number) =>
@@ -105,10 +108,13 @@ export const writtenBody = (index: number) =>
 /** Their expression sentence, kept apart. */
 export const writtenExpression = 'Calm.'
 
-/** A scripted reply with its expression sentence, '' unless scripted. */
+/** Their clothing sentence, kept apart. */
+export const writtenClothing = 'Kit.'
+
+/** A scripted reply with its expression and clothing sentences, '' unless scripted. */
 const withExpression = async <T>(reply: Promise<WithoutExpression<T>>) => {
   const r = await reply
-  return { ...r, expression: r.expression ?? '' } as T
+  return { ...r, expression: r.expression ?? '', clothing: r.clothing ?? '' } as T
 }
 
 /**
@@ -165,7 +171,11 @@ export function scriptedTextModel(
       model.writeRequests.push(req)
       signal.throwIfAborted()
       if (scripts.writes === undefined) {
-        return Promise.resolve({ body: writtenBody(req.index), expression: writtenExpression })
+        return Promise.resolve({
+          body: writtenBody(req.index),
+          expression: writtenExpression,
+          clothing: writtenClothing,
+        })
       }
       return withExpression<StoryboardWrite>(next(scripts.writes, 'write'))
     },

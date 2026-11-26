@@ -19,6 +19,7 @@ const made: api.Sheet = {
     mirrored: ['d', 'e', 'f'],
     imageModel: 'qwen-image-2.1',
     createdAt: '2026-11-25T00:00:00.000Z',
+    thing: false,
   },
 }
 

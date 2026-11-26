@@ -44,6 +44,7 @@ const frame = (
     image: {
       body,
       expression: '',
+      clothing: '',
       prompt: composePrompt(look, body, shown),
       ...(blocked && { blocked }),
       written: { model: 'fake', seconds: 2 },

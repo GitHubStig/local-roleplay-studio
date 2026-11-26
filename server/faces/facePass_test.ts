@@ -26,6 +26,7 @@ const made = (slug: string): SheetPicture => ({
   ) as SheetPicture['mirrored'],
   imageModel: 'qwen-image-2.1',
   createdAt: '2026-11-26T00:00:00.000Z',
+  thing: false,
 })
 const kael: ShownSheet = {
   subject: 'Kael',
@@ -114,6 +115,23 @@ Deno.test('An edit per face shown, each from the view of its sheet nearest its t
     // Only the render and the faces are left: the masks and the first edit are gone.
     const left = (await Array.fromAsync(Deno.readDir(dir))).map((e) => e.name).sort()
     assertEquals(left, [file, 'frame-2-12345678.png'].sort())
+  }))
+
+Deno.test("A thing's sheet is told to keep its shape and state, not a face, nor what anyone wears", () =>
+  withTempDir(async (dir) => {
+    const lantern: ShownSheet = {
+      subject: 'the Lantern of Vael',
+      identity: 'A brass lantern with green glass.',
+      made: { ...made('lantern'), thing: true },
+    }
+    const head = { label: 'the Lantern of Vael', box: [100, 100, 300, 400] as Head['box'] }
+    const { images } = await pass(dir, { found: [[head]] }, [lantern])
+    // Told a face's words, the pass painted a face into the lantern's glass
+    // (docs/bench/reference-sheets/2026-11-26/object/).
+    assertEquals(
+      images.edits[0].instruction,
+      'Give the Lantern of Vael, the thing in the marked area of image 1, the look of the one in image 2: its shape, materials and details. Keep how it is lit and its state exactly as in image 1, the way it is turned, and everything else.',
+    )
   }))
 
 Deno.test('No head found: the render is left as it was, saying whose', () =>

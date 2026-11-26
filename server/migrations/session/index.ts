@@ -11,6 +11,7 @@ import { v2 } from './v2.ts'
 import { v3 } from './v3.ts'
 import { v4 } from './v4.ts'
 import { v5 } from './v5.ts'
+import { v6 } from './v6.ts'
 
 export const sessionFile: Migrations<Session> = migrations()
   .then(v1)
@@ -18,4 +19,5 @@ export const sessionFile: Migrations<Session> = migrations()
   .then(v3)
   .then(v4)
   .then(v5)
+  .then(v6)
   .done((doc): Session => doc)

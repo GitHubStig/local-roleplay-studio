@@ -128,6 +128,7 @@ describe("LookForm's reference sheets", () => {
           mirrored: ['d', 'e', 'f'],
           imageModel: 'q',
           createdAt: '',
+          thing: false,
         },
       }, sheet('Elara')],
       jobs: [job('failed', 'a')],

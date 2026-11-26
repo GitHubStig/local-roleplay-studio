@@ -268,8 +268,10 @@ Deno.test('An edit of the whole picture, as a camera move is, has a face pass of
       false,
     ])
     assertEquals((await editJobs(call))[0].faces, { subjects: ['Ace'] })
-    // An edit of the whole picture is told as a render's pass is: the Frame's expression named.
+    // An edit of the whole picture is told as a render's pass is: the Frame's expression named,
+    // and its clothing sentence, which a Storyboard's Frame keeps apart as a Roleplay's does.
     assert(face.instruction.includes('(Calm)'), face.instruction)
+    assert(face.instruction.endsWith('Keep what is on Ace in image 1: Kit.'), face.instruction)
 
     // Without the face pass, for the edit the Frame shows; and back.
     const without = await sessionFrom(

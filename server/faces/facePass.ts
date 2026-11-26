@@ -92,8 +92,16 @@ export interface SheetCheckRequest {
 export interface FaceWay {
   /** After the render: repaints the faces, or says why it didn't. Removes what it made on failure. */
   repaint(req: FacesRequest, emit: FacesEmit, signal: AbortSignal): Promise<FacesDone>
-  /** Why a sheet just made is unfit for this way, or undefined when it's fit. */
-  checkSheet(req: SheetCheckRequest, signal: AbortSignal): Promise<string | undefined>
+  /** Why a sheet just made is unfit for this way (none when it's fit), and whether it's a thing's. */
+  checkSheet(req: SheetCheckRequest, signal: AbortSignal): Promise<SheetCheck>
+}
+
+/** What a sheet's check found. */
+export interface SheetCheck {
+  /** Why it's unfit for the face pass; none when it's fit. */
+  flaw?: string
+  /** No head on it: a thing's sheet, not a person's or creature's. */
+  thing: boolean
 }
 
 /** The sheets of the Subjects a Frame shows that its face pass uses: ticked and made, in its order. */
@@ -147,7 +155,8 @@ export function twoPasses(deps: TwoPassDeps): FaceWay {
           },
           signal,
         )
-        return sheetFlaw(look, req.who.name)
+        const flaw = sheetFlaw(look, req.who.name)
+        return { ...(flaw && { flaw }), thing: look.heads === 0 }
       } finally {
         release()
       }
@@ -214,12 +223,12 @@ export function twoPasses(deps: TwoPassDeps): FaceWay {
               image: picture,
               mask,
               references: [viewFor(sheet.made, head.facing)],
-              instruction: await faceInstruction(
-                sheet.subject,
-                req.expression,
-                req.change,
-                req.worn,
-              ),
+              instruction: await faceInstruction(sheet.subject, {
+                expression: req.expression,
+                change: req.change,
+                worn: req.worn,
+                thing: sheet.made.thing,
+              }),
               seed,
               strength: deps.strength ?? faceStrength(model, req.again),
               quantize: now.editQuantize,
@@ -298,23 +307,31 @@ export function faceStrength(model: EditModel, again = false): number {
   return typeof faces === 'object' ? again ? faces.again : faces.strength : 1
 }
 
+/** What the face pass's instruction for one Subject is made from. */
+export interface FaceTold {
+  /** The Frame's expression sentence, '' when not known. */
+  expression: string
+  /** An edit's instruction, for the pass to keep what it changed. */
+  change?: string
+  /** The Frame's clothing sentence, '' or none when not known. */
+  worn?: string
+  /** The Subject is a thing (its sheet has no head). */
+  thing?: boolean
+}
+
 /**
- * The face pass's instruction for one Subject: after an edit, the change it made named (`change`);
+ * The face pass's instruction for one Subject (`name`): after an edit, the change it made named;
  * else its expression named, where it's known, and what the Frame's clothing sentence says is on
- * them (`worn`), where it's kept.
+ * them, where it's known. A thing is told to take its sheet's shape and keep its state instead,
+ * as a face's words painted a face into a lantern.
  */
 export async function faceInstruction(
   name: string,
-  expression: string,
-  change?: string,
-  worn?: string,
+  { expression, change, worn, thing }: FaceTold,
 ): Promise<string> {
-  if (change?.trim()) {
-    return loadPrompt('faces/face-edited', {
-      name,
-      change: change.trim().replace(/([^.!?])$/, '$1.'),
-    })
-  }
+  const kept = change?.trim().replace(/([^.!?])$/, '$1.')
+  if (thing) return loadPrompt(kept ? 'faces/thing-edited' : 'faces/thing', { name, change: kept })
+  if (kept) return loadPrompt('faces/face-edited', { name, change: kept })
   const face = expression.trim()
     ? await loadPrompt('faces/face', { name, expression: expression.trim().replace(/\.$/, '') })
     : await loadPrompt('faces/face-unknown', { name })

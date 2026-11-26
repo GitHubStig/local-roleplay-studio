@@ -262,8 +262,6 @@ export interface RoleplayImage extends FrameImage {
    * picture of the place alone.
    */
   shown: string[]
-  /** The picture's clothing sentence, checked to dress everyone shown while the Limits are on. */
-  clothing: string
 }
 
 /**

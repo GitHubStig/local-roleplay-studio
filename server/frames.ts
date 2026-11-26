@@ -222,7 +222,7 @@ export interface FacesOf {
   shown: string[]
   /** Its expression sentence, '' when not known. */
   expression: string
-  /** What its clothing sentence says each person has on, marks included: a Roleplay Frame's. */
+  /** What its clothing sentence says each person has on, marks included; '' when not known. */
   worn?: string
 }
 
@@ -235,11 +235,10 @@ export function facesOfFrame(session: Session, index: number): FacesOf | undefin
   if (session.kind === 'chain') return undefined
   const frame = session.frames[index]
   if (!frame?.image) return undefined
-  if (session.kind === 'roleplay') {
-    const image = frame.image as RoleplayImage
-    return { shown: image.shown, expression: image.expression, worn: image.clothing }
-  }
-  return { shown: (frame as StoryboardFrame).shown, expression: frame.image.expression }
+  const shown = session.kind === 'roleplay'
+    ? (frame.image as RoleplayImage).shown
+    : (frame as StoryboardFrame).shown
+  return { shown, expression: frame.image.expression, worn: frame.image.clothing }
 }
 
 /** What the face pass is given of a picture just made and saved: a render, or an edit. */

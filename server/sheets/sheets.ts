@@ -94,7 +94,8 @@ const slug = (name: string) =>
 /**
  * Makes Subject `subject`'s sheet: renders it at `SHEET_SIZE` by the sheets' Image Model (Settings'
  * choice, or the Session's own) at the sheet's seed, through the render queue; has the face pass's
- * way check it (`FaceWay.checkSheet`: three views in order, no writing), and one unfit is made
+ * way check it (`FaceWay.checkSheet`: three views in order, no writing; and whether it's a thing's,
+ * with no head), and one unfit is made
  * again at the next seed, the sheet keeping that seed (ADR 0011: a retry is one more); one unfit
  * again is kept, saying why (`flaw`), for the player to Redo or Change…. It then cuts its three
  * views and mirrors them, and saves it, replacing any it had. Discarded if, meanwhile, the sheet
@@ -119,6 +120,8 @@ export async function makeSheet(
   let seed = sheet.seed
   let rendered: Awaited<ReturnType<typeof renderImage>>
   let flaw: string | undefined
+  // Not checked (nothing here can find heads): taken for a person's.
+  let thing = false
   for (let tries = 1;; tries++) {
     const name = `sheet-${slug(subject)}-${crypto.randomUUID().slice(0, 8)}`
     rendered = await renderImage(deps, session, prompt, name, emit, signal, {
@@ -127,7 +130,9 @@ export async function makeSheet(
       imageModel,
     })
     try {
-      flaw = await deps.faces?.checkSheet({ session, file: rendered.file, who }, signal)
+      const checked = await deps.faces?.checkSheet({ session, file: rendered.file, who }, signal)
+      flaw = checked?.flaw
+      thing = checked?.thing ?? false
     } catch (err) {
       await removeFiles(dir, [rendered.file])
       throw err
@@ -145,6 +150,7 @@ export async function makeSheet(
       imageModel: rendered.imageModel,
       createdAt: new Date().toISOString(),
       ...(flaw && { flaw }),
+      thing,
     }
   } catch (err) {
     await removeFiles(dir, [rendered.file])

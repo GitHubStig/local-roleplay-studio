@@ -33,6 +33,8 @@ export interface PlannedFrame {
   body: string
   /** Its expression sentence, kept apart (`parseFrameBody`). */
   expression: string
+  /** Its clothing sentence, likewise. */
+  clothing: string
   /** Names of the Look's Subjects, as written: the engine matches them to the Look. */
   shown: string[]
 }
@@ -69,6 +71,8 @@ export interface StoryboardWrite {
   body: string
   /** Its expression sentence, kept apart (`parseFrameBody`). */
   expression: string
+  /** Its clothing sentence, likewise. */
+  clothing: string
   thinking?: string
 }
 

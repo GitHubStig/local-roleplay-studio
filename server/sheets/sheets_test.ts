@@ -50,6 +50,7 @@ const made = (file: string) => ({
   mirrored: [`${file}-1m`, `${file}-2m`, `${file}-3m`] as [string, string, string],
   imageModel: 'qwen-image-2.1',
   createdAt: '2026-11-25T00:00:00.000Z',
+  thing: false,
 })
 
 Deno.test('reconcileSheets gives each Subject a ticked sheet, seeded from the Session and its place', () => {
@@ -178,6 +179,8 @@ Deno.test('makeSheet checks each sheet: one unfit is made again at the next seed
     // Fit at once: made at its seed, nothing said.
     const fit = await make([])
     assertEquals([seeds, fit.sheet.seed, fit.sheet.made?.flaw], [[101], 101, undefined])
+    // A person's: its check found heads on it.
+    assertEquals(fit.sheet.made?.thing, false)
     assertEquals(fit.asked[0].who, { name: 'Sam Reyes', identity: '25.' })
     assertEquals(fit.asked[0].image, fit.sheet.made?.file)
     // Unfit, then fit: the second kept, at the seed it was made with, the first gone.
@@ -195,6 +198,11 @@ Deno.test('makeSheet checks each sheet: one unfit is made again at the next seed
       f.startsWith('sheet-')
     ).sort()
     assertEquals(left, sheetFiles(unfit.sheet.made).sort())
+
+    // No head on it: a thing's sheet, kept so for the face pass to tell it as one.
+    await redoSheet(store, (await store.load('r1')) as RoleplaySession, 'Sam Reyes')
+    const thing = await make([{ ...FIT_SHEET, heads: 0 }])
+    assertEquals([thing.sheet.made?.flaw, thing.sheet.made?.thing], [undefined, true])
   }))
 
 Deno.test('makeSheet discards a sheet whose identity changed while it rendered', () =>

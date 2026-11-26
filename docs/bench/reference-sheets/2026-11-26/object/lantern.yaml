@@ -1,0 +1,12 @@
+# An object's reference sheet through the face pass (open threads): a three-Frame Storyboard with
+# sheets whose Brief makes stage 0's Lantern of Vael a Subject, lit, beside Kael from the public
+# tavern Scenario. Run with --on comfyui, Settings' edits pointed at the same ComfyUI.
+kind: storyboard
+seed: 7
+frameCount: 3
+sheets: true
+brief: >-
+  Night in a rain-soaked tavern. Kael, a lean, scarred tavern keeper of 42 with short unkempt brown
+  hair, takes down the Lantern of Vael, an ornate brass lantern with a domed cap, a ring handle and
+  panes of green glass etched with spiralling vines, lights it so its green glass glows from within,
+  and carries it to the door to look out into the storm.

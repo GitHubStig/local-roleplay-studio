@@ -88,6 +88,11 @@ export interface SheetPicture {
    * it was found so twice, the second time kept; none when it was fit, or not checked.
    */
   flaw?: string
+  /**
+   * The check found no head on it: a thing (a lantern), not a person or creature, so the face
+   * pass tells its edit to keep its shape and state rather than a face. False when not checked.
+   */
+  thing: boolean
 }
 
 /**
@@ -125,7 +130,7 @@ export interface ChainImage {
 
 /**
  * A Storyboard Frame's image, once its sentences are written; a Roleplay Frame's adds who it shows
- * and what they wear (`RoleplayImage`).
+ * (`RoleplayImage`).
  */
 export interface FrameImage {
   /**
@@ -139,6 +144,12 @@ export interface FrameImage {
    * before it was kept, or whose sentences were edited by hand and no longer hold it word for word.
    */
   expression: string
+  /**
+   * Its clothing sentence (what each person has on, and anything on their skin: a bruise, dirt),
+   * kept apart for the face pass to name, as the expression's is: '' when not known, likewise. A
+   * Roleplay's is always written, and checked to dress everyone shown while the Limits are on.
+   */
+  clothing: string
   /**
    * Exactly what the Image Model renders: the identities of the Subjects shown, the body, then the
    * Look's style sentence.

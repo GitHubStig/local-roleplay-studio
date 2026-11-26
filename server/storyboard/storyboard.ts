@@ -21,7 +21,7 @@ import type {
   StoryboardSession,
   Written,
 } from '../../shared/session.ts'
-import { type FrameBody, keptExpression, plainSentences } from '../frameBody.ts'
+import { type FrameBody, keptSentence, plainSentences } from '../frameBody.ts'
 import type { PlannedBeat } from './text.ts'
 import { Refusal } from '../refusal.ts'
 
@@ -59,7 +59,7 @@ function plannedFrame(look: Look, index: number, beat: string, shown: string[]):
 function makeFrame(
   look: Look,
   frame: StoryboardFrame,
-  { body, expression }: FrameBody,
+  { body, expression, clothing }: FrameBody,
   shown: string[],
   written: Written,
 ): WrittenFrame {
@@ -69,7 +69,7 @@ function makeFrame(
   return {
     ...frame,
     shown: names,
-    image: { body, expression, prompt, ...(blocked ? { blocked } : {}), written },
+    image: { body, expression, clothing, prompt, ...(blocked ? { blocked } : {}), written },
   }
 }
 
@@ -272,7 +272,7 @@ export async function renderStoryboardFrame(
     emit,
     signal,
     (change) => updateSession(deps.store, session.id, 'storyboard', change),
-    { shown: frame.shown, expression: image.expression },
+    { shown: frame.shown, expression: image.expression, worn: image.clothing },
   )
   emit({ type: 'rendered', frame: rendered })
   return rendered
@@ -295,8 +295,12 @@ export async function setFrameBody(
   // Onto the Storyboard as it is now: a queued render may have finished meanwhile.
   return await updateSession(deps.store, session.id, 'storyboard', (latest) => {
     const frame = checkWritten(latest, index)
-    // Typed by hand: its expression sentence is kept only if it's still there.
-    const typed = { body: text, expression: keptExpression(frame.image.expression, text) }
+    // Typed by hand: its expression and clothing sentences are kept only if they're still there.
+    const typed = {
+      body: text,
+      expression: keptSentence(frame.image.expression, text),
+      clothing: keptSentence(frame.image.clothing, text),
+    }
     const edited = recompose(frame, latest.look!, typed, shown ?? frame.shown)
     if (edited.image.blocked) throw new LimitError(`That crosses a limit: ${edited.image.blocked}`)
     return { ...latest, frames: latest.frames.map((f) => f.index === index ? edited : f) }

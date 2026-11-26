@@ -1,0 +1,8 @@
+[0m[32mTask[0m [0m[36mreplay[0m deno run --allow-net --allow-read server/replay/replay.ts 'docs/bench/reference-sheets/2026-11-26/object/lantern.yaml' '--on' 'comfyui'
+Session 20261126-133000-8f71
+the plan: 6 s
+the Frames: 82 s
+every picture and render, reference sheet: 237 s
+Sheet of Kael: sheet-kael-0da7c845.png, by krea-2-lora on comfyui, seed 7, 36 s
+Sheet of the Lantern of Vael: sheet-the-lantern-of-vael-821313dd.png, by krea-2-lora on comfyui, seed 8, 35 s
+Done: http://127.0.0.1:8787 → Session 20261126-133000-8f71
