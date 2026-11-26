@@ -14,7 +14,7 @@ export const changeSchema = {
   properties: {
     identity: {
       type: 'string',
-      description: 'the identity, rewritten with the change, starting with the name',
+      description: 'the identity, rewritten with the change, without the name',
     },
   },
   required: ['identity'],

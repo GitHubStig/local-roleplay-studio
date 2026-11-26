@@ -302,8 +302,8 @@ Deno.test('setBeat and setLook edit the plan until a Frame is written, then refu
     const two = planOf(2, {
       look: {
         subjects: [
-          { name: 'Ace', identity: 'Ace, a tall adult athlete.' },
-          { name: 'Bo', identity: 'Bo, a stocky adult coach.' },
+          { name: 'Ace', identity: 'a tall adult athlete.' },
+          { name: 'Bo', identity: 'a stocky adult coach.' },
         ],
         style: 'Ink.',
       },
@@ -323,14 +323,14 @@ Deno.test('setBeat and setLook edit the plan until a Frame is written, then refu
     // A person renamed in place stays shown where they were; one removed is dropped.
     const renamed = await setLook(deps, beat, {
       subjects: [
-        { name: 'Ace', identity: 'Ace, a tall adult athlete.' },
-        { name: 'Bo Dee', identity: 'Bo Dee, a stocky adult coach.' },
+        { name: 'Ace', identity: 'a tall adult athlete.' },
+        { name: 'Bo Dee', identity: 'a stocky adult coach.' },
       ],
       style: 'Ink.',
     })
     assertEquals(renamed.frames.map((f) => f.shown), [['Bo Dee'], ['Bo Dee', 'Ace']])
     const removed = await setLook(deps, renamed, {
-      subjects: [{ name: 'Ace', identity: 'Ace, a tall adult athlete.' }],
+      subjects: [{ name: 'Ace', identity: 'a tall adult athlete.' }],
       style: 'Ink.',
     })
     assertEquals(removed.frames.map((f) => f.shown), [[], ['Ace']])
@@ -480,7 +480,7 @@ Deno.test('a Frame shows only the Subjects its Beat names, at most three, and no
     // Without a full stop, an identity still ends as a sentence.
     const subjects = ['Ana', 'Ben', 'Cal', 'Dee'].map((name) => ({
       name,
-      identity: `${name}, an adult sailor`,
+      identity: 'an adult sailor',
     }))
     const plan = planOf(3, {
       look: { subjects, style: 'Film still.' },
@@ -592,10 +592,10 @@ Deno.test('composePrompt ends each part as a sentence so they never run together
   const look = (identity: string, style: string) => ({ subjects: [{ name: 'X', identity }], style })
   assertEquals(
     composePrompt(look('A tall man ', 'Manga ink'), 'He jumps.', ['X']),
-    'A tall man. He jumps. Manga ink.',
+    'X, a tall man. He jumps. Manga ink.',
   )
   assertEquals(
-    composePrompt(look('She asks "why?"', 'Oil paint!'), '', ['X']),
-    'She asks "why?" Oil paint!',
+    composePrompt(look('a sailor who asks "why?"', 'Oil paint!'), '', ['X']),
+    'X, a sailor who asks "why?" Oil paint!',
   )
 })

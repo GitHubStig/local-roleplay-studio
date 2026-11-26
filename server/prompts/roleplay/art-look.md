@@ -19,9 +19,7 @@ pictures will share, word for word:
 
 - "people": {{character.name}} first, then {{persona.name}}, then anyone else the Brief names or
   picks out who may be pictured (a barkeep, a rival), each with their "name" and their
-  "identity": {{identity}} For example: "Kael, a 42-year-old man with a lean build, weathered
-  tanned skin, short greying hair and a scarred, angular face." Leave out crowds and unnamed
-  extras.
+  "identity": {{identity}} For example, Kael's: "a 42-year-old man with a lean build, weathered tanned skin, short greying hair and a scarred, angular face." Leave out crowds and unnamed extras.
 - "style": the art style and medium every picture is made in: a photograph, a painting or an
   illustration, and its look. Fit it to the story's period and mood.
 

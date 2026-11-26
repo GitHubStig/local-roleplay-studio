@@ -36,7 +36,7 @@ const reviewing = (extra: Partial<RoleplaySession> = {}): RoleplaySession => ({
   seed: 100,
   createdAt: '2026-11-25T00:00:00.000Z',
   cast: testCast,
-  look: testLook('Ink.', 'Mira Vance, 34, a grey braid.', 'Sam Reyes, 25.'),
+  look: testLook('Ink.', '34, a grey braid.', '25.'),
   lookBehindCast: false,
   sheets: [],
   cues: [],
@@ -55,8 +55,8 @@ const made = (file: string) => ({
 Deno.test('reconcileSheets gives each Subject a ticked sheet, seeded from the Session and its place', () => {
   const { sheets, remade, dropped } = reconcileSheets(reviewing())
   assertEquals(sheets, [
-    { subject: 'Mira Vance', ticked: true, identity: 'Mira Vance, 34, a grey braid.', seed: 100 },
-    { subject: 'Sam Reyes', ticked: true, identity: 'Sam Reyes, 25.', seed: 101 },
+    { subject: 'Mira Vance', ticked: true, identity: '34, a grey braid.', seed: 100 },
+    { subject: 'Sam Reyes', ticked: true, identity: '25.', seed: 101 },
   ])
   assertEquals([remade, dropped], [[], []])
   // None for a Session without sheets.
@@ -68,14 +68,14 @@ Deno.test('reconcileSheets keeps a sheet, renames one, makes one again from a ne
   const mira: Sheet = {
     subject: 'Mira Vance',
     ticked: false,
-    identity: 'Mira Vance, 34, a grey braid.',
+    identity: '34, a grey braid.',
     seed: 100,
     made: made('mira.png'),
   }
   const sam: Sheet = {
     subject: 'Sam Reyes',
     ticked: true,
-    identity: 'Sam Reyes, 25.',
+    identity: '25.',
     seed: 101,
     made: made('sam.png'),
   }
@@ -96,11 +96,11 @@ Deno.test('reconcileSheets keeps a sheet, renames one, makes one again from a ne
     sheets: [mira, sam],
     look: {
       ...testLook(),
-      subjects: [{ name: 'Mira Vance', identity: 'Mira Vance, 34, green eyes.' }],
+      subjects: [{ name: 'Mira Vance', identity: '34, green eyes.' }],
     },
   }))
   assertEquals(changed.sheets, [
-    { subject: 'Mira Vance', ticked: false, identity: 'Mira Vance, 34, green eyes.', seed: 100 },
+    { subject: 'Mira Vance', ticked: false, identity: '34, green eyes.', seed: 100 },
   ])
   assertEquals(changed.remade, ['Mira Vance'])
   assertEquals(changed.dropped.map((d) => d.file), ['mira.png', 'sam.png'])
@@ -178,7 +178,7 @@ Deno.test('makeSheet checks each sheet: one unfit is made again at the next seed
     // Fit at once: made at its seed, nothing said.
     const fit = await make([])
     assertEquals([seeds, fit.sheet.seed, fit.sheet.made?.flaw], [[101], 101, undefined])
-    assertEquals(fit.asked[0].who, { name: 'Sam Reyes', identity: 'Sam Reyes, 25.' })
+    assertEquals(fit.asked[0].who, { name: 'Sam Reyes', identity: '25.' })
     assertEquals(fit.asked[0].image, fit.sheet.made?.file)
     // Unfit, then fit: the second kept, at the seed it was made with, the first gone.
     await redoSheet(store, (await store.load('r1')) as RoleplaySession, 'Sam Reyes')
@@ -286,13 +286,13 @@ Deno.test("Change… rewrites a Subject's identity with the note, unsaved, refus
       (e) => events.push(e),
       signal(),
     )
-    assertEquals(identity, 'Mira Vance, 34, a grey braid, green eyes.')
+    assertEquals(identity, '34, a grey braid, green eyes.')
     assertEquals(events.at(-1), { type: 'identity', subject: 'Mira Vance', identity })
     // Not saved: the player reads it first.
     assertEquals(await store.load('r1'), session)
     // The model is told the identity as it is, and the note.
     const asked = textModel.changeRequests[0][1].content
-    assertStringIncludes(asked, 'Mira Vance, 34, a grey braid.')
+    assertStringIncludes(asked, '34, a grey braid.')
     assertStringIncludes(asked, 'green eyes')
     const change = (note: string) =>
       changeSheet({ textModel }, session, 'Mira Vance', note, () => {}, signal())

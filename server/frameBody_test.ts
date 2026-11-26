@@ -54,17 +54,17 @@ Deno.test("parseLook reads the model's people as Subjects, each named once, and 
   assertEquals(
     parseLook({
       people: [
-        { name: 'Ana', identity: 'Ana, a tall woman.' },
+        { name: 'Ana', identity: 'a tall woman.' },
         { name: 'ana', identity: 'Ana again.' },
         { name: 'Ben', identity: '' },
-        { name: 'Cal', identity: 'Cal, a\nbig man.' },
+        { name: 'Cal', identity: 'a\nbig man.' },
       ],
       style: 'Film still.',
     }),
     {
       subjects: [
-        { name: 'Ana', identity: 'Ana, a tall woman.' },
-        { name: 'Cal', identity: 'Cal, a big man.' },
+        { name: 'Ana', identity: 'a tall woman.' },
+        { name: 'Cal', identity: 'a big man.' },
       ],
       style: 'Film still.',
     },

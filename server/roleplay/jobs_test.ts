@@ -32,7 +32,7 @@ async function roleplayWithArt(
     roleplayModel: scriptedRoleplayModel({
       casts: [testCast],
       replies: [replyOf('You are late.'), replyOf('Take the wheel.')],
-      looks: [testLook('Ink.', 'Mira Vance, 34.', 'Sam Reyes, 25.')],
+      looks: [testLook('Ink.', '34.', '25.')],
       bodies,
     }),
     ...extra,
@@ -55,7 +55,7 @@ Deno.test('Picturing, rendering and upscaling a Roleplay Frame are queued jobs, 
     const { call } = await roleplayWithArt(root, [artBody])
     // Written in the Cast review, before any picture.
     const begun = await getSession(call, 'roleplay')
-    assertEquals(begun.look, testLook('Ink.', 'Mira Vance, 34.', 'Sam Reyes, 25.'))
+    assertEquals(begun.look, testLook('Ink.', '34.', '25.'))
     const enqueue = (kind: string, frameIndex = 0) =>
       call('POST', '/api/sessions/s1/jobs', { kind, frameIndex })
     assertEquals((await enqueue('picture', 5)).status, 404)
@@ -77,7 +77,7 @@ Deno.test('Picturing, rendering and upscaling a Roleplay Frame are queued jobs, 
     const look = await call(
       'PUT',
       '/api/sessions/s1/roleplay/look',
-      testLook('Watercolour.', 'Mira Vance, 34.', 'Sam Reyes, 25.'),
+      testLook('Watercolour.', '34.', '25.'),
     )
     assertEquals(pictureOf((await sessionFrom(look)).frames[0]).stale, true)
     const [card] = await listSessions(call)
@@ -90,7 +90,7 @@ Deno.test('A Roleplay switches Text Model: what it writes next is by the new one
       name: 'gemma4:26b',
       casts: [testCast],
       replies: [replyOf('You are late.')],
-      looks: [testLook('Ink.', 'Mira Vance, 34.', 'Sam Reyes, 25.')],
+      looks: [testLook('Ink.', '34.', '25.')],
     })
     const after = scriptedRoleplayModel({
       name: 'qwen3.8:27b-mlx',
@@ -529,7 +529,7 @@ Deno.test('A Reply’s picture, and its render as the switches ask, are queued a
       roleplayModel: scriptedRoleplayModel({
         casts: [testCast],
         replies: [replyOf('You are late.'), replyOf('Take the wheel.'), replyOf('Hold on.')],
-        looks: [testLook('Ink.', 'Mira Vance, 34.', 'Sam Reyes, 25.')],
+        looks: [testLook('Ink.', '34.', '25.')],
         bodies: [artBody, artBody, artBody],
       }),
     })

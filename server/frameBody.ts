@@ -4,6 +4,7 @@
  */
 import { PROMPT_ORDER } from './imagePrompt.ts'
 import type { Look } from '../shared/session.ts'
+import { withoutName } from './identity.ts'
 
 /** The sentences a Storyboard Frame writes itself; the Look supplies the first and last. */
 export const BODY_ASPECTS = PROMPT_ORDER.slice(1, 8).map((p) => p.aspect)
@@ -58,7 +59,7 @@ export const lookSchema = {
         type: 'object',
         properties: {
           name: { type: 'string' },
-          identity: { type: 'string', description: 'subject and identity, starting with the name' },
+          identity: { type: 'string', description: 'subject and identity, without the name' },
         },
         required: ['name', 'identity'],
       },
@@ -103,8 +104,8 @@ export const plainSentences = (text: string) =>
 export const lookForModel = (look: Look) => ({ people: look.subjects, style: look.style })
 
 /**
- * A Look from the reply, its "people" the Look's Subjects. One without a name or identity, or
- * named twice, is left out.
+ * A Look from the reply, its "people" the Look's Subjects, any name written at the start of an
+ * identity taken off. One without a name or identity, or named twice, is left out.
  */
 export function parseLook(value: unknown): Look {
   const v = value as { people?: unknown; style?: unknown } | null
@@ -113,7 +114,9 @@ export function parseLook(value: unknown): Look {
   }
   const subjects = v.people.flatMap((p) => {
     const name = typeof p?.name === 'string' ? oneParagraph(p.name) : ''
-    const identity = typeof p?.identity === 'string' ? oneParagraph(p.identity) : ''
+    const identity = typeof p?.identity === 'string'
+      ? withoutName(name, oneParagraph(p.identity))
+      : ''
     return name && identity ? [{ name, identity }] : []
   }).filter((p, i, all) =>
     all.findIndex((q) => q.name.toLowerCase() === p.name.toLowerCase()) === i

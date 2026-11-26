@@ -9,6 +9,7 @@
 import type { Backend } from '../../shared/backends.ts'
 import type { Subject } from '../../shared/session.ts'
 import { loadPrompt } from '../promptFiles.ts'
+import { namedIdentity } from '../identity.ts'
 
 /** Which way a head is turned, as seen in the picture. */
 export const FACINGS = [
@@ -68,12 +69,12 @@ export type AskPicture = (
 export function headFinder(ask: AskPicture): HeadFinder {
   return {
     async find(req, signal) {
-      const question = await loadPrompt('heads/find', { who: req.who.identity })
+      const question = await loadPrompt('heads/find', { who: namedIdentity(req.who) })
       const [reply] = await ask(req, [question], signal)
       return parseHeads(reply)
     },
     async lookOver(req, signal) {
-      const who = { who: req.who.identity, name: req.who.name }
+      const who = { who: namedIdentity(req.who), name: req.who.name }
       const [views, heads, sheet] = await ask(req, [
         await loadPrompt('heads/views', who),
         await loadPrompt('heads/count'),

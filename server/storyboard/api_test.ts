@@ -51,7 +51,7 @@ Deno.test('POST /api/sessions makes a Storyboard with a Frame count', () =>
 Deno.test('A Storyboard is planned, reviewed, written, rendered and edited over the API', () =>
   withTempDir(async (root) => {
     const newLook = {
-      subjects: [{ name: 'Ace', identity: 'Ace, a tall adult athlete.' }],
+      subjects: [{ name: 'Ace', identity: 'a tall adult athlete.' }],
       style: 'Watercolour.',
     }
     const { call } = setup({

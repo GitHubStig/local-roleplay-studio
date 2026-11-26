@@ -7,6 +7,7 @@ import { asSentences, joinPrompt } from './imagePrompt.ts'
 import { crossedLimit } from './limits.ts'
 import type { Look, Subject } from '../shared/session.ts'
 import { plainSentences } from './frameBody.ts'
+import { namedIdentity, withoutName } from './identity.ts'
 
 /**
  * The most Subjects whose identities one Frame's prompt carries: an Image Model keeps two or three
@@ -44,12 +45,12 @@ export function shownSubjects(look: Look, shown: string[]): Subject[] {
 }
 
 /**
- * A Frame's Image Prompt: the identities of the Subjects it shows (none for a picture of
- * the place alone), the Frame's own sentences, then the Look's style.
+ * A Frame's Image Prompt: the identities of the Subjects it shows, each after its name (none for a
+ * picture of the place alone), the Frame's own sentences, then the Look's style.
  */
 export const composePrompt = (look: Look, body: string, shown: string[]) =>
   joinPrompt(
-    shownSubjects(look, shown).map((p) => asSentences(p.identity)).join(' '),
+    shownSubjects(look, shown).map((p) => asSentences(namedIdentity(p))).join(' '),
     body,
     look.style,
   )
@@ -71,15 +72,16 @@ export function renameShown(before: Subject[], after: Subject[], shown: string[]
 const oneLine = (text: string) => text.trim().replace(/\s+/g, ' ')
 
 /**
- * A Look edited by hand, tidied: one-line names, plain sentences. Throws if a Subject lacks a name
+ * A Look edited by hand, tidied: one-line names, plain sentences, no name at the start of an
+ * identity (the engine puts it there). Throws if a Subject lacks a name
  * or an identity, two share a name, or there's no style.
  */
 export function cleanLook(look: Look): Look {
   const clean: Look = {
-    subjects: look.subjects.map((p) => ({
-      name: oneLine(p.name),
-      identity: plainSentences(p.identity),
-    })),
+    subjects: look.subjects.map((p) => {
+      const name = oneLine(p.name)
+      return { name, identity: withoutName(name, plainSentences(p.identity)) }
+    }),
     style: plainSentences(look.style),
   }
   if (clean.subjects.some((p) => !p.name || !p.identity)) {

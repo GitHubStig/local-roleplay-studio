@@ -417,7 +417,7 @@ const withLook = (deps: RoleplayDeps, session: RoleplaySession) =>
 Deno.test('writeLook writes the Look from the Cast, and pictureFrame each Frame from the story', () =>
   withTempDir(async (root) => {
     const { deps, session, store } = await setUp(root, [replyOf('Take the wheel.')])
-    const look = testLook('Oil.', 'Mira Vance, a tall woman of 34.', 'Sam.')
+    const look = testLook('Oil.', 'a tall woman of 34.', 'a man.')
     const scripted = scriptedRoleplayModel({
       looks: [look],
       bodies: [body('Mira grips the wheel.'), body('Mira points ahead.')],
@@ -483,7 +483,7 @@ Deno.test('setLook rewrites every pictured Frame, and refuses an incomplete Look
 Deno.test('Someone the story brings into a picture joins the Look, and looks the same later', () =>
   withTempDir(async (root) => {
     const { deps, session } = await setUp(root)
-    const barkeep = { name: 'the barkeep', identity: 'The barkeep, a stout man of 60.' }
+    const barkeep = { name: 'the barkeep', identity: 'a stout man of 60.' }
     const scripted = scriptedRoleplayModel({
       looks: [testLook()],
       bodies: [
@@ -509,7 +509,10 @@ Deno.test('Someone the story brings into a picture joins the Look, and looks the
       'the barkeep',
     ])
     assertEquals(first.frames[0].image?.shown, ['Mira Vance', 'the barkeep'])
-    assertStringIncludes(first.frames[0].image!.prompt, 'Mira. The barkeep, a stout man of 60.')
+    assertStringIncludes(
+      first.frames[0].image!.prompt,
+      'Mira Vance, a woman. The barkeep, a stout man of 60.',
+    )
 
     const again = await pictureFrame(art, first, 0, () => {}, signal())
     // The next picture reads him in the Look.

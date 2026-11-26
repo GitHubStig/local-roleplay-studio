@@ -212,7 +212,7 @@ export function scriptedTextModel(
 /** A scripted Storyboard plan with `n` Frames. */
 export const planOf = (n: number, extra: Partial<StoryboardPlan> = {}): StoryboardPlan => ({
   look: {
-    subjects: [{ name: 'Ace', identity: 'Ace, a tall adult athlete.' }],
+    subjects: [{ name: 'Ace', identity: 'a tall adult athlete.' }],
     style: 'A pencil sketch.',
   },
   beats: Array.from({ length: n }, (_, i) => ({ beat: `Beat ${i + 1}`, shown: ['Ace'] })),

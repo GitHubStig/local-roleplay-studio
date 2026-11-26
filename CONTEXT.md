@@ -73,7 +73,7 @@ The identities and art style a Storyboard's or a Roleplay's pictures share, used
 _Avoid_: Style guide, theme, bible
 
 **Subject**:
-One of a Look's: a person, creature, animal or object the story follows from picture to picture, with a name and an identity. A group that acts together and looks alike can be one.
+One of a Look's: a person, creature, animal or object the story follows from picture to picture, with a name and an identity: what it looks like, without the name, which each picture puts in front of it. A group that acts together and looks alike can be one.
 _Avoid_: Person (for one of a Look's), character, entity
 
 **Reference sheet**:

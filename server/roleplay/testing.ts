@@ -38,7 +38,7 @@ export const replyOf = (dialogue: string, extra: Partial<Reply> = {}): Reply => 
 })
 
 /** A Look for the test Cast: Mira and Sam, with these identities, in this style. */
-export const testLook = (style = 'Ink.', mira = 'Mira.', sam = 'Sam.'): Look => ({
+export const testLook = (style = 'Ink.', mira = 'a woman.', sam = 'a man.'): Look => ({
   subjects: [{ name: 'Mira Vance', identity: mira }, { name: 'Sam Reyes', identity: sam }],
   style,
 })

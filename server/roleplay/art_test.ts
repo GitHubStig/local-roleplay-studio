@@ -24,8 +24,8 @@ const MIRA = 'Mira Vance'
 const SAM = 'Sam Reyes'
 const look = {
   subjects: [
-    { name: MIRA, identity: 'Mira Vance, a tall woman of 34.' },
-    { name: SAM, identity: 'Sam Reyes, a slight man of 25.' },
+    { name: MIRA, identity: 'a tall woman of 34.' },
+    { name: SAM, identity: 'a slight man of 25.' },
   ],
   style: 'An oil painting.',
 }
@@ -155,13 +155,13 @@ Deno.test('parseWho reads who a picture shows and adds; parseRoleplayLook needs 
   assertEquals(
     parseWho({
       shown: ['Mira', '', 3, 'the barkeep'],
-      newcomers: [{ name: 'the barkeep', identity: 'The barkeep, a stout man of 60.' }, {
+      newcomers: [{ name: 'the barkeep', identity: 'a stout man of 60.' }, {
         name: 'nobody',
       }],
     }),
     {
       shown: ['Mira', 'the barkeep'],
-      newcomers: [{ name: 'the barkeep', identity: 'The barkeep, a stout man of 60.' }],
+      newcomers: [{ name: 'the barkeep', identity: 'a stout man of 60.' }],
     },
   )
   assertEquals(parseWho({}), { shown: [], newcomers: [] })
@@ -174,7 +174,7 @@ Deno.test('parseWho reads who a picture shows and adds; parseRoleplayLook needs 
 })
 
 Deno.test('Newcomers join the Look, unless already in it or crossing another Limit', () => {
-  const barkeep = { name: 'the barkeep', identity: 'The barkeep, a stout man of 60.' }
+  const barkeep = { name: 'the barkeep', identity: 'a stout man of 60.' }
   const grown = withNewcomers(look, [
     barkeep,
     { name: 'Mira', identity: 'Mira again, differently.' },

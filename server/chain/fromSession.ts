@@ -8,6 +8,7 @@ import { frameName } from '../frames.ts'
 import { join } from '@std/path'
 import { joinPrompt, sentences } from '../imagePrompt.ts'
 import { shownSubjects } from '../look.ts'
+import { namedIdentity } from '../identity.ts'
 import { editLine } from '../pictures.ts'
 import type { Picture, PictureVersion } from '../../shared/pictures.ts'
 import type { SessionStore } from '../session.ts'
@@ -33,7 +34,7 @@ export function oneSubject(identities: string[]): string {
  */
 export const chainPrompt = (look: Look, frame: { body: string; shown: string[] }): string =>
   joinPrompt(
-    oneSubject(shownSubjects(look, frame.shown).map((p) => p.identity)),
+    oneSubject(shownSubjects(look, frame.shown).map(namedIdentity)),
     frame.body,
     look.style,
   )

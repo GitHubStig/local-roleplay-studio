@@ -52,7 +52,7 @@ Deno.test("A Roleplay's sheets are made from its Look in the Cast review, and se
       roleplayModel: scriptedRoleplayModel({
         casts: [testCast],
         replies: [replyOf('You are late.')],
-        looks: [testLook('Ink.', 'Mira Vance, 34.', 'Sam Reyes, 25.')],
+        looks: [testLook('Ink.', '34.', '25.')],
       }),
     })
     await call('POST', '/api/sessions', { kind: 'roleplay', brief: 'A storm at sea.' })
@@ -72,11 +72,11 @@ Deno.test("A Roleplay's sheets are made from its Look in the Cast review, and se
     await call(
       'PUT',
       '/api/sessions/s1/roleplay/look',
-      testLook('Ink.', 'Mira Vance, 34, green eyes.', 'Sam Reyes, 25.'),
+      testLook('Ink.', '34, green eyes.', '25.'),
     )
     assertEquals(await settled(call), [])
     const edited = await getSession(call, 'roleplay')
-    assertEquals(edited.sheets[0].identity, 'Mira Vance, 34, green eyes.')
+    assertEquals(edited.sheets[0].identity, '34, green eyes.')
     assertEquals(!!edited.sheets[0].made, true)
     assertEquals(edited.sheets[1].made, sam)
     await call('DELETE', '/api/sessions/s1/jobs/finished')
@@ -97,18 +97,18 @@ Deno.test("A Roleplay's sheets are made from its Look in the Cast review, and se
       await call('POST', '/api/sessions/s1/sheets/Mira%20Vance/change', { note: 'short hair' }),
     )
     const answered = change.find(([type]) => type === 'identity')?.[1]
-    assertEquals(answered?.identity, 'Mira Vance, 34, green eyes, short hair.')
+    assertEquals(answered?.identity, '34, green eyes, short hair.')
     const unsaved = await getSession(call, 'roleplay')
-    assertEquals(unsaved.look?.subjects[0].identity, 'Mira Vance, 34, green eyes.')
+    assertEquals(unsaved.look?.subjects[0].identity, '34, green eyes.')
     await call(
       'PUT',
       '/api/sessions/s1/roleplay/look',
-      testLook('Ink.', 'Mira Vance, 34, green eyes, short hair.', 'Sam Reyes, 25.'),
+      testLook('Ink.', '34, green eyes, short hair.', '25.'),
     )
     assertEquals(await settled(call), [])
     const changed = await getSession(call, 'roleplay')
     assertEquals([changed.sheets[0].identity, !!changed.sheets[0].made], [
-      'Mira Vance, 34, green eyes, short hair.',
+      '34, green eyes, short hair.',
       true,
     ])
     assertEquals(changed.sheets[0].seed, unsaved.sheets[0].seed)
@@ -195,7 +195,7 @@ Deno.test('Sheets are turned on or off until the story begins, and again after a
       roleplayModel: scriptedRoleplayModel({
         casts: [testCast],
         replies: [replyOf('You are late.')],
-        looks: [testLook('Ink.', 'Mira Vance, 34.', 'Sam Reyes, 25.')],
+        looks: [testLook('Ink.', '34.', '25.')],
       }),
     })
     await call('POST', '/api/sessions', { kind: 'roleplay', brief: 'A storm.', sheets: false })
@@ -246,7 +246,7 @@ Deno.test("A Roleplay begun before its Look is written still gets that Look's sh
     const model = scriptedRoleplayModel({
       casts: [testCast],
       replies: [replyOf('You are late.')],
-      looks: [testLook('Ink.', 'Mira Vance, 34.', 'Sam Reyes, 25.')],
+      looks: [testLook('Ink.', '34.', '25.')],
     })
     const holding = {
       ...model,

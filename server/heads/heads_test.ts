@@ -40,7 +40,7 @@ Deno.test('A head finder asks for a Subject by its identity', async () => {
     asked.push(questions)
     return Promise.resolve([QUAY])
   })
-  const who = { name: 'Kael', identity: 'Kael, a 42-year-old man with a scar.' }
+  const who = { name: 'Kael', identity: 'a 42-year-old man with a scar.' }
   const req = { dir: '.', image: 'frame-0.png' }
   assertEquals((await finder.find({ ...req, who }, new AbortController().signal)).length, 2)
   assertEquals(asked[0].length, 1)
@@ -61,7 +61,7 @@ Deno.test('A sheet is looked over in one ask: its views, its heads, what is writ
       '```json\n{"backdrop": "plain, grey", "writing": "Kael,", "others": "a lit oil lamp"}\n```',
     ])
   })
-  const who = { name: 'Kael', identity: 'Kael, a 42-year-old man with a scar.' }
+  const who = { name: 'Kael', identity: 'a 42-year-old man with a scar.' }
   const look = await finder.lookOver(
     { dir: '.', image: 'sheet.png', who },
     new AbortController().signal,

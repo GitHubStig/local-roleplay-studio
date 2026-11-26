@@ -23,6 +23,7 @@ import { sheetImageModel } from '../machine.ts'
 import { removeFiles } from '../pictures.ts'
 import { sheetFiles } from '../sessionParts.ts'
 import { loadPrompt } from '../promptFiles.ts'
+import { namedIdentity, withoutName } from '../identity.ts'
 import { Refusal } from '../refusal.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
 import { GoneError, updateSession } from '../update.ts'
@@ -80,7 +81,11 @@ export const sheetsToMake = (session: WithSheets): Sheet[] =>
 
 /** A Subject's sheet's prompt: its identity, the sheet's three views, the Look's style. */
 export const sheetPrompt = (sheet: Sheet, style: string) =>
-  loadPrompt('sheets/sheet', { identity: sheet.identity, name: sheet.subject, style })
+  loadPrompt('sheets/sheet', {
+    identity: namedIdentity({ name: sheet.subject, identity: sheet.identity }),
+    name: sheet.subject,
+    style,
+  })
 
 /** A file name's part for a Subject: "the-lantern-of-vael". */
 const slug = (name: string) =>
@@ -298,11 +303,12 @@ export async function changeSheet(
   if (!person) throw new SheetError(`${subject} isn't in the Look`, 404)
   emit({ type: 'phase', phase: 'text' })
   const messages = await changeMessages(person, asked)
-  const { identity } = await withRetry(
+  const { identity: written } = await withRetry(
     (onThinking) => deps.textModel.changeIdentity(messages, signal, onThinking),
     signal,
     emit,
   )
+  const identity = withoutName(subject, written)
   signal.throwIfAborted()
   const limit = crossedLimit(identity)
   if (limit) throw new SheetError(`The changed identity crosses a limit: ${limit.message}`, 422)

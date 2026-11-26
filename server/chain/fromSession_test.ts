@@ -7,6 +7,7 @@ import type { Look, StoryboardFrame, StoryboardSession } from '../../shared/sess
 import { DEFAULT_SETTINGS } from '../settings.ts'
 import { withTempDir } from '../testing.ts'
 import { pictureFiles } from '../pictures.ts'
+import { namedIdentity } from '../identity.ts'
 import {
   chainFromRoleplay,
   chainFromStoryboard,
@@ -19,8 +20,8 @@ import { replyOf, testCast } from '../roleplay/testing.ts'
 
 const look: Look = {
   subjects: [
-    { name: 'Mara', identity: 'Mara, a woman in her 30s, lean, with short red hair.' },
-    { name: 'Cal', identity: 'Cal, a man in his 40s. He has a grey beard.' },
+    { name: 'Mara', identity: 'a woman in her 30s, lean, with short red hair.' },
+    { name: 'Cal', identity: 'a man in his 40s. He has a grey beard.' },
   ],
   style: 'Ink sketch, loose cross-hatching.',
 }
@@ -84,7 +85,7 @@ async function saved(root: string, board: StoryboardSession) {
 
 Deno.test('oneSubject joins identities into one sentence, every word kept', () => {
   assertEquals(
-    oneSubject(look.subjects.map((p) => p.identity)),
+    oneSubject(look.subjects.map(namedIdentity)),
     'Mara, a woman in her 30s, lean, with short red hair; Cal, a man in his 40s; He has a grey beard.',
   )
   assertEquals(oneSubject([]), NO_ONE)
@@ -107,7 +108,7 @@ Deno.test('chainFromStoryboard copies the Frames up to one, as nine-sentence pro
     // Two: one subject sentence for both, then the seven, then the style.
     const two = made.frames[1].image.prompt
     assertEquals(sentences(two).length, 9)
-    assertEquals(subjectSentence(two), oneSubject(look.subjects.map((p) => p.identity)))
+    assertEquals(subjectSentence(two), oneSubject(look.subjects.map(namedIdentity)))
     // Only where sentences end changed, so the pictures still show the prompts.
     assertEquals(made.frames.flatMap((f) => f.pictures.map((p) => p.stale)), [undefined, undefined])
 
@@ -293,7 +294,7 @@ Deno.test('chainFromRoleplay opens a Chain on one pictured Frame, its picture co
     assertEquals(sentences(opening.image.prompt).length, 9)
     assertEquals(
       subjectSentence(opening.image.prompt),
-      oneSubject(look.subjects.map((p) => p.identity)),
+      oneSubject(look.subjects.map(namedIdentity)),
     )
     const [picture] = opening.pictures
     assertEquals([picture.stale, picture.clips], [undefined, undefined])

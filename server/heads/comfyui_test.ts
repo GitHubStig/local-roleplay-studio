@@ -17,7 +17,7 @@ Deno.test("Each question goes to ComfyUI's TextGenerate with the picture, upload
       await Deno.writeFile(join(dir, 'frame-0.png'), await testPng(4, 4))
       const ask = comfyuiAskPicture({ address: comfy.url, checkEveryMs: 50 })
       const finder = headFinder(ask)
-      const who = { name: 'Kael', identity: 'Kael, a man.' }
+      const who = { name: 'Kael', identity: 'a man.' }
       const heads = await finder.find(
         { dir, image: 'frame-0.png', who },
         new AbortController().signal,
