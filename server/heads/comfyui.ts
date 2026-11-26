@@ -16,23 +16,30 @@ export function comfyuiAskPicture(
   opts: { address: string; checkEveryMs?: number },
 ): AskPicture {
   const base = comfyBase(opts.address)
-  return async (req, question, signal) => {
+  return async (req, questions, signal) => {
     const picture = await Deno.readFile(join(req.dir, req.image))
     const files = await modelFiles(base, QWEN, signal)
-    const { outputs } = await withUploads(base, [picture], async ([image]) =>
-      await runWorkflow(
-        base,
-        fillWorkflow(await loadWorkflow(new URL('./workflows/ask.json', import.meta.url)), {
-          ...files,
-          // Uploaded to its temp folder, which LoadImage must be told.
-          image: `${image} [temp]`,
-          question,
-        }),
-        signal,
-        opts.checkEveryMs ?? 15_000,
-      ))
-    const text = (outputs.answer?.text as unknown[] | undefined)?.[0]
-    if (typeof text !== 'string') throw new Error("Qwen-Image 2.1 didn't answer on ComfyUI")
-    return text
+    const workflow = await loadWorkflow(new URL('./workflows/ask.json', import.meta.url))
+    // One upload, a prompt per question: ComfyUI keeps the model loaded between them.
+    return await withUploads(base, [picture], async ([image]) => {
+      const replies: string[] = []
+      for (const question of questions) {
+        const { outputs } = await runWorkflow(
+          base,
+          fillWorkflow(workflow, {
+            ...files,
+            // Uploaded to its temp folder, which LoadImage must be told.
+            image: `${image} [temp]`,
+            question,
+          }),
+          signal,
+          opts.checkEveryMs ?? 15_000,
+        )
+        const text = (outputs.answer?.text as unknown[] | undefined)?.[0]
+        if (typeof text !== 'string') throw new Error("Qwen-Image 2.1 didn't answer on ComfyUI")
+        replies.push(text)
+      }
+      return replies
+    })
   }
 }

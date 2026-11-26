@@ -6,7 +6,7 @@ import { DEFAULT_SETTINGS } from '../settings.ts'
 import { fakeImageGenerator, scriptedTextModel, testPng, withTempDir } from '../testing.ts'
 import { replyOf, testCast, testLook } from '../roleplay/testing.ts'
 import type { RoleplaySession } from '../../shared/roleplay.ts'
-import type { Sheet } from '../../shared/session.ts'
+import { type Sheet, sheetsSettled } from '../../shared/session.ts'
 import type { SheetEvent } from '../../shared/events.ts'
 import {
   changeSheet,
@@ -16,11 +16,12 @@ import {
   redoSheet,
   SHEET_SIZE,
   SheetError,
-  sheetsSettled,
   sheetsToMake,
   tickSheet,
 } from './sheets.ts'
 import { sheetFiles } from '../sessionParts.ts'
+import { twoPasses } from '../faces/facePass.ts'
+import { fakeHeadFinder, FIT_SHEET } from '../heads/testing.ts'
 
 const signal = () => new AbortController().signal
 
@@ -145,6 +146,55 @@ Deno.test('makeSheet renders a Subject at its seed and the sheet size, from its 
     for (const file of sheetFiles(sheet.made)) {
       assertEquals((await Deno.stat(join(store.dir('r1'), file))).isFile, true)
     }
+  }))
+
+Deno.test('makeSheet checks each sheet: one unfit is made again at the next seed, then kept saying why', () =>
+  withTempDir(async (root) => {
+    const store = dirSessionStore(root)
+    const fresh = reviewing()
+    await store.save({ ...fresh, sheets: reconcileSheets(fresh).sheets })
+    const images = fakeImageGenerator()
+    const seeds: number[] = []
+    const seeding = {
+      ...images,
+      generate(...args: Parameters<typeof images.generate>) {
+        seeds.push((args[0] as { seed: number }).seed)
+        return images.generate(...args)
+      },
+    }
+    const written = { ...FIT_SHEET, writing: 'Sam' }
+    const make = async (looks: (typeof FIT_SHEET)[]) => {
+      const heads = fakeHeadFinder({ looks })
+      const faces = twoPasses({ store, imageGenerator: seeding, heads })
+      const updated = await makeSheet(
+        { store, imageGenerator: seeding, faces },
+        (await store.load('r1')) as RoleplaySession,
+        'Sam Reyes',
+        () => {},
+        signal(),
+      )
+      return { sheet: updated.sheets[1], asked: heads.asked }
+    }
+    // Fit at once: made at its seed, nothing said.
+    const fit = await make([])
+    assertEquals([seeds, fit.sheet.seed, fit.sheet.made?.flaw], [[101], 101, undefined])
+    assertEquals(fit.asked[0].who, { name: 'Sam Reyes', identity: 'Sam Reyes, 25.' })
+    assertEquals(fit.asked[0].image, fit.sheet.made?.file)
+    // Unfit, then fit: the second kept, at the seed it was made with, the first gone.
+    await redoSheet(store, (await store.load('r1')) as RoleplaySession, 'Sam Reyes')
+    seeds.length = 0
+    const again = await make([written])
+    assertEquals([seeds, again.sheet.seed, again.sheet.made?.flaw], [[102, 103], 103, undefined])
+    // Unfit twice: the second kept, saying why, and only its files are left.
+    await redoSheet(store, (await store.load('r1')) as RoleplaySession, 'Sam Reyes')
+    seeds.length = 0
+    const unfit = await make([written, written])
+    assertEquals([seeds, unfit.sheet.seed], [[104, 105], 105])
+    assertEquals(unfit.sheet.made?.flaw, 'It has writing on it: “Sam”.')
+    const left = [...Deno.readDirSync(store.dir('r1'))].map((f) => f.name).filter((f) =>
+      f.startsWith('sheet-')
+    ).sort()
+    assertEquals(left, sheetFiles(unfit.sheet.made).sort())
   }))
 
 Deno.test('makeSheet discards a sheet whose identity changed while it rendered', () =>

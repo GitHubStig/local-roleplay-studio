@@ -364,7 +364,7 @@ export function loggedEmbedder(embedder: StyleEmbedder): StyleEmbedder {
 
 /** `finder`, with each question logged (`logCalls`): the picture, whom it looked for, what it found. */
 export function loggedHeads(finder: HeadFinder): HeadFinder {
-  const found = (heads: Awaited<ReturnType<HeadFinder['count']>>) => ({ heads })
+  const found = (heads: Awaited<ReturnType<HeadFinder['find']>>) => ({ heads })
   return {
     find(req, signal) {
       return logged(
@@ -375,13 +375,13 @@ export function loggedHeads(finder: HeadFinder): HeadFinder {
         found,
       )
     },
-    count(req, signal) {
+    lookOver(req, signal) {
       return logged(
-        'count heads',
+        'look over a sheet',
         'Qwen-Image 2.1',
-        { image: req.image },
-        () => finder.count(req, signal),
-        found,
+        { image: req.image, who: req.who.name },
+        () => finder.lookOver(req, signal),
+        (look) => ({ ...look }),
       )
     },
   }

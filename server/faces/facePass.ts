@@ -1,5 +1,5 @@
 /**
- * The face pass (docs/reference-sheets-plans.md): after a Frame renders, or its picture is edited,
+ * The face pass (ADR 0045): after a Frame renders, or its picture is edited,
  * each face it shows of a Subject with a reference sheet is repainted from that sheet (for an edit
  * of a painted area, only the heads the area touches, told to keep what the edit changed).
  * How the faces come from the sheets is one interface (`FaceWay`), as the plan keeps one pass
@@ -20,10 +20,10 @@ import type { Backend } from '../../shared/backends.ts'
 import type { FacePass } from '../../shared/pictures.ts'
 import type { FacesStep } from '../../shared/jobs.ts'
 import type { ProgressEvent } from '../../shared/events.ts'
-import type { Session, Sheet, SheetPicture } from '../../shared/session.ts'
+import type { Session, Sheet, SheetPicture, Subject } from '../../shared/session.ts'
 import type { Settings } from '../../shared/settings.ts'
 import { EDIT_MODELS, type EditModel } from '../../shared/images.ts'
-import type { Head, HeadFinder, HeadRequest } from '../heads/heads.ts'
+import { type Head, type HeadFinder, type HeadRequest, sheetFlaw } from '../heads/heads.ts'
 import type { ImageGenerator } from '../images/imageGenerator.ts'
 import { editJob, type HeavyJob } from '../machine.ts'
 import { pngSize } from '../png.ts'
@@ -71,10 +71,19 @@ export type FacesDone =
 /** Its progress: the render's own events, and the step's (`faces`) as it begins. */
 export type FacesEmit = (event: ProgressEvent) => void
 
-/** How a Frame's faces come from their sheets (the plan's "one interface with both ways"). */
+/** A reference sheet just made, to check before it's used: a PNG in the Session's folder. */
+export interface SheetCheckRequest {
+  session: Session
+  file: string
+  who: Subject
+}
+
+/** How a Frame's faces come from their sheets (one interface for one pass or two, ADR 0045). */
 export interface FaceWay {
   /** After the render: repaints the faces, or says why it didn't. Removes what it made on failure. */
   repaint(req: FacesRequest, emit: FacesEmit, signal: AbortSignal): Promise<FacesDone>
+  /** Why a sheet just made is unfit for this way, or undefined when it's fit. */
+  checkSheet(req: SheetCheckRequest, signal: AbortSignal): Promise<string | undefined>
 }
 
 /** The sheets of the Subjects a Frame shows that its face pass uses: ticked and made, in its order. */
@@ -106,6 +115,33 @@ const seconds = (start: number) => Math.round((performance.now() - start) / 100)
 /** Two passes: the render, then an edit per face (the default, and the only way built). */
 export function twoPasses(deps: TwoPassDeps): FaceWay {
   return {
+    /**
+     * Looked over by the Qwen3-VL the face pass finds heads with, where the face pass's edits go,
+     * taking its turn there as they do: three views in the order the pass picks one by, no writing
+     * (`sheetFlaw`).
+     */
+    async checkSheet(req, signal) {
+      const now = deps.settings ? await deps.settings() : DEFAULT_SETTINGS
+      const job = editJob(now.faceEditModel)
+      const backend = await deps.backendOf?.(job)
+      const release = await (deps.renderQueue ?? new RenderQueue()).acquire(signal, () => {}, {
+        job,
+      })
+      try {
+        const look = await deps.heads.lookOver(
+          {
+            dir: deps.store.dir(req.session.id),
+            image: req.file,
+            who: req.who,
+            ...(backend && { backend }),
+          },
+          signal,
+        )
+        return sheetFlaw(look, req.who.name)
+      } finally {
+        release()
+      }
+    },
     async repaint(req, emit, signal) {
       const now = deps.settings ? await deps.settings() : DEFAULT_SETTINGS
       const model = now.faceEditModel

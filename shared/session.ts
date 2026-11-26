@@ -56,7 +56,7 @@ export interface Look {
 /**
  * A reference sheet of one Subject of a Look: three head-and-shoulders views of it (front,
  * three-quarter, profile) in one render, for the face pass to repaint its face from in every
- * picture (docs/reference-sheets-plans.md). Made in a Storyboard's plan review or a Roleplay's Cast
+ * picture (ADR 0045). Made in a Storyboard's plan review or a Roleplay's Cast
  * review, and fixed once the story begins.
  */
 export interface Sheet {
@@ -83,6 +83,11 @@ export interface SheetPicture {
   /** The Image Model that rendered it. */
   imageModel: string
   createdAt: string
+  /**
+   * Why the check found it unfit for the face pass (writing on it, its views out of order), when
+   * it was found so twice, the second time kept; none when it was fit, or not checked.
+   */
+  flaw?: string
 }
 
 /**
@@ -90,6 +95,16 @@ export interface SheetPicture {
  * Storyboard plans all its Frames together from the Brief.
  */
 export type SessionKind = 'chain' | 'storyboard' | 'roleplay'
+
+/**
+ * Whether a Session's reference sheets are settled: once its story has begun (a Roleplay's
+ * opening, a Storyboard's first Frame written), they're made, redone and ticked no more, so no
+ * picture is made from a sheet that later changes. One still being made then is finished.
+ */
+export const sheetsSettled = (
+  session: { kind: SessionKind; frames: readonly { image?: unknown }[] },
+): boolean =>
+  session.kind === 'roleplay' ? session.frames.length > 0 : session.frames.some((f) => f.image)
 
 /** `faces`: a render's face pass, repainting faces from their reference sheets. */
 export type Phase = 'text' | 'queued' | 'image' | 'audio' | 'download' | 'faces'
@@ -120,7 +135,7 @@ export interface FrameImage {
   body: string
   /**
    * Its expression sentence (each person's facial expression and where they look), kept apart for
-   * the face pass to name (docs/reference-sheets-plans.md): '' when not known, for a Frame written
+   * the face pass to name (ADR 0045): '' when not known, for a Frame written
    * before it was kept, or whose sentences were edited by hand and no longer hold it word for word.
    */
   expression: string

@@ -1,5 +1,5 @@
 /**
- * `session.json` at version 5 (2026-11-25): reference sheets (docs/reference-sheets-plans.md). A
+ * `session.json` at version 5 (2026-11-25): reference sheets (ADR 0045). A
  * Session says whether it has them (`settings.sheets`), a Storyboard or a Roleplay keeps a sheet per
  * Subject of its Look, each written Frame keeps its expression sentence apart, for the face pass
  * to name, and a picture and each edit keep their face pass (`faces`, added with stages 4 and 5 while no Session had one). A full copy of version 4's types, so a later change to `shared/` leaves it as it was;
@@ -41,6 +41,7 @@ interface SheetPicture {
   mirrored: [string, string, string]
   imageModel: string
   createdAt: string
+  flaw?: string
 }
 
 type ImageBackendKind = 'mflux' | 'comfyui'

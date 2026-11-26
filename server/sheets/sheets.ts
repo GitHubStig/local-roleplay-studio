@@ -1,5 +1,5 @@
 /**
- * Reference sheets (docs/reference-sheets-plans.md): a sheet of each Subject of a Storyboard's or
+ * Reference sheets (ADR 0045): a sheet of each Subject of a Storyboard's or
  * a Roleplay's Look, three views of it in one render, made while the player reviews the plan or
  * the Cast, for the face pass to repaint faces from. Kept beside the Look (`sheets`), in its order,
  * each made from its Subject's identity word for word, and settled once the story begins.
@@ -8,7 +8,12 @@ import decodePng from '@jsquash/png/decode.js'
 import encodePng from '@jsquash/png/encode.js'
 import { join } from '@std/path'
 import type { RoleplaySession } from '../../shared/roleplay.ts'
-import type { Sheet, SheetPicture, StoryboardSession } from '../../shared/session.ts'
+import {
+  type Sheet,
+  type SheetPicture,
+  sheetsSettled,
+  type StoryboardSession,
+} from '../../shared/session.ts'
 import type { SheetEvent } from '../../shared/events.ts'
 import { type RenderDeps, renderImage, withRetry } from '../frames.ts'
 import type { TextModel } from '../textModel.ts'
@@ -30,14 +35,6 @@ export const SHEET_SIZE = { width: 1536, height: 640 }
 
 /** Why a sheet can't be made, redone or ticked: it crosses a Limit, or its story has begun. */
 export class SheetError extends Refusal {}
-
-/**
- * Whether a Session's sheets are settled: once its story has begun (a Roleplay's opening, a
- * Storyboard's first Frame written), they're made, redone and ticked no more, so no picture is
- * made from a sheet that later changes. One still being made then is finished.
- */
-export const sheetsSettled = (session: WithSheets): boolean =>
-  session.kind === 'roleplay' ? session.frames.length > 0 : session.frames.some((f) => f.image)
 
 /**
  * A Session's sheets brought in line with its Look: one per Subject, in its order. A Subject's
@@ -91,7 +88,10 @@ const slug = (name: string) =>
 
 /**
  * Makes Subject `subject`'s sheet: renders it at `SHEET_SIZE` by the sheets' Image Model (Settings'
- * choice, or the Session's own) at the sheet's seed, through the render queue, cuts its three
+ * choice, or the Session's own) at the sheet's seed, through the render queue; has the face pass's
+ * way check it (`FaceWay.checkSheet`: three views in order, no writing), and one unfit is made
+ * again at the next seed, the sheet keeping that seed (ADR 0011: a retry is one more); one unfit
+ * again is kept, saying why (`flaw`), for the player to Redo or Change…. It then cuts its three
  * views and mirrors them, and saves it, replacing any it had. Discarded if, meanwhile, the sheet
  * went, or its identity or seed changed (made again by another job).
  */
@@ -110,12 +110,27 @@ export async function makeSheet(
   const now = deps.settings ? await deps.settings() : DEFAULT_SETTINGS
   const imageModel = sheetImageModel(session.settings, now)
   const dir = deps.store.dir(session.id)
-  const name = `sheet-${slug(subject)}-${crypto.randomUUID().slice(0, 8)}`
-  const rendered = await renderImage(deps, session, prompt, name, emit, signal, {
-    seed: sheet.seed,
-    size: SHEET_SIZE,
-    imageModel,
-  })
+  const who = { name: sheet.subject, identity: sheet.identity }
+  let seed = sheet.seed
+  let rendered: Awaited<ReturnType<typeof renderImage>>
+  let flaw: string | undefined
+  for (let tries = 1;; tries++) {
+    const name = `sheet-${slug(subject)}-${crypto.randomUUID().slice(0, 8)}`
+    rendered = await renderImage(deps, session, prompt, name, emit, signal, {
+      seed,
+      size: SHEET_SIZE,
+      imageModel,
+    })
+    try {
+      flaw = await deps.faces?.checkSheet({ session, file: rendered.file, who }, signal)
+    } catch (err) {
+      await removeFiles(dir, [rendered.file])
+      throw err
+    }
+    if (!flaw || tries === 2) break
+    await removeFiles(dir, [rendered.file])
+    seed += 1
+  }
   let made: SheetPicture
   try {
     signal.throwIfAborted()
@@ -124,6 +139,7 @@ export async function makeSheet(
       ...await cutSheet(dir, rendered.file),
       imageModel: rendered.imageModel,
       createdAt: new Date().toISOString(),
+      ...(flaw && { flaw }),
     }
   } catch (err) {
     await removeFiles(dir, [rendered.file])
@@ -135,7 +151,7 @@ export async function makeSheet(
     const now = latest.sheets.find((s) => s.subject === subject)
     if (!now || now.identity !== sheet.identity || now.seed !== sheet.seed) return latest
     replaced = now.made
-    saved = { ...now, made }
+    saved = { ...now, seed, made }
     return { ...latest, sheets: latest.sheets.map((s) => (s === now ? saved! : s)) }
   })
   if (!saved) {

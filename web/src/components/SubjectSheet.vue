@@ -6,7 +6,7 @@ import { jobStatus } from '../jobs'
 import Icon from './Icon.vue'
 
 /**
- * A Subject's reference sheet, under its identity in the Look (docs/reference-sheets-plans.md):
+ * A Subject's reference sheet, under its identity in the Look (ADR 0045):
  * the sheet, or its job's state while it's made; Redo, and Change…, which has the Text Model
  * rewrite the identity with a note and shows it before the sheet is made again from it (`change`,
  * which the Look saves). Unticked, it greys with its buttons. Once the story has begun (`settled`),
@@ -124,6 +124,12 @@ function makeIt() {
         {{ off ? 'No sheet' : 'Not made yet' }}
       </span>
     </div>
+
+    <!-- Made twice and found unfit both times (`flaw`): kept, as the player may want it anyway. -->
+    <p v-if="sheet.made?.flaw && !making" class="text-xs text-warn" data-sheet-flaw>
+      Made twice, and unfit both times: {{ sheet.made.flaw }}
+      <template v-if="!settled">The faces are repainted from it as it is: Redo, or Change… it.</template>
+    </p>
 
     <p v-if="settled" class="text-xs text-muted" data-sheet-settled>{{ settledText }}</p>
 

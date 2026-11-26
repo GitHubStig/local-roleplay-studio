@@ -1,9 +1,9 @@
 <!--
-The head finder's count of every head in a picture, before and after the face pass, to the
-Qwen3-VL in Qwen-Image 2.1 (`server/heads/`): a picture with more after has had its sheet's three
-heads pasted in, and is done again with one view (docs/reference-sheets-plans.md). The bench's
-words (docs/bench/reference-sheets/2026-11-25/scripts/mac-count.py), which flagged only that and
-no other picture on both runtimes.
+Looking over a reference sheet before the face pass uses it (`lookOver`, `server/heads/heads.ts`),
+to the Qwen3-VL in Qwen-Image 2.1: whether its Subject has a head (a person or creature) or not (a
+thing), as only a head's turns are checked. On the bench's 42 sheets it counted three heads on
+every person's and none on every lantern's (docs/bench/reference-sheets/2026-11-26/check/). Stage
+0's words, from when it counted heads before and after the face pass.
 
 Values: none
 -->

@@ -76,6 +76,18 @@ describe('SubjectSheet', () => {
     expect(failed.find('[data-sheet-failed]').text()).toBe("Couldn't make it: mflux quit")
   })
 
+  it('says why a sheet was found unfit twice, and that it is used as it is', () => {
+    const flawed = { ...made, made: { ...made.made!, flaw: 'It has writing on it: “Kael,”.' } }
+    const flaw = shown({ sheet: flawed }).find('[data-sheet-flaw]')
+    expect(flaw.text()).toContain('unfit both times: It has writing on it: “Kael,”.')
+    expect(flaw.text()).toContain('Redo, or Change… it')
+    // Settled, it still says why, but not what to do.
+    expect(shown({ sheet: flawed, settled: true }).find('[data-sheet-flaw]').text()).not.toContain(
+      'Redo',
+    )
+    expect(shown().find('[data-sheet-flaw]').exists()).toBe(false)
+  })
+
   it('greys an unticked sheet and its buttons; settled, shows it alone with how to change it', () => {
     const off = shown({ sheet: { ...made, ticked: false } })
     expect(off.find<HTMLButtonElement>('[data-sheet-redo]').element.disabled).toBe(true)

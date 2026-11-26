@@ -1,9 +1,10 @@
 /**
- * Finding and counting heads in a picture, for the face pass of reference sheets
- * (docs/reference-sheets-plans.md): asked of the Qwen3-VL that Qwen-Image 2.1 loads as its text
- * encoder, on mflux (`mflux.ts`) or a ComfyUI (`comfyui.ts`), the only finder of five benched that
- * found every head and says whose it is (2026-11-25). Each backend only answers a question about
- * a picture; the questions (`prompts/heads/`) and reading the answers are here, the same for both.
+ * Finding heads in a picture, for the face pass of reference sheets, and looking a sheet over
+ * before it's used (docs/design/pictures.md): asked of the Qwen3-VL that Qwen-Image 2.1 loads as
+ * its text encoder, on mflux (`mflux.ts`) or a ComfyUI (`comfyui.ts`), the only finder of five
+ * benched that found every head and says whose it is (2026-11-25). Each backend only answers
+ * questions about a picture; the questions (`prompts/heads/`) and reading the answers are here,
+ * the same for both.
  */
 import type { Backend } from '../../shared/backends.ts'
 import type { Subject } from '../../shared/session.ts'
@@ -37,35 +38,111 @@ export interface HeadRequest {
   backend?: Backend
 }
 
+/** A reference sheet as Qwen3-VL saw it (`lookOver`), for `sheetFlaw` to judge. */
+export interface SheetLook {
+  /** Each time the Subject is shown, left to right, with its turn. */
+  views: Head[]
+  /** How many heads of a person or creature it has: none for a thing. */
+  heads: number
+  /** What's written on it, '' for nothing. */
+  writing: string
+  /** Anything else in it ("a lit oil lamp"), '' for nothing: noted, not judged. */
+  others: string
+}
+
 export interface HeadFinder {
   /** Where `who` is in the picture: their head, or a thing whole, by name and identity. */
   find(req: HeadRequest & { who: Subject }, signal: AbortSignal): Promise<Head[]>
-  /**
-   * Every head of a person or creature in the picture. Unused since 2026-11-26, when the face pass
-   * took one view of a sheet, which can't paste the sheet's three heads in, so nothing is counted
-   * after it any more. Kept for now, to revisit: stage 6's check of a sheet (three distinct angles)
-   * may use it (docs/reference-sheets-plans.md).
-   */
-  count(req: HeadRequest, signal: AbortSignal): Promise<Head[]>
+  /** Looks over `who`'s reference sheet: three questions at once (one load on mflux). */
+  lookOver(req: HeadRequest & { who: Subject }, signal: AbortSignal): Promise<SheetLook>
 }
 
-/** What a backend does: asks Qwen3-VL `question` about the picture and answers with its reply. */
+/** What a backend does: asks Qwen3-VL each question about the picture, and answers each reply. */
 export type AskPicture = (
   req: HeadRequest,
-  question: string,
+  questions: string[],
   signal: AbortSignal,
-) => Promise<string>
+) => Promise<string[]>
 
 /** A head finder over a backend's `ask`. */
 export function headFinder(ask: AskPicture): HeadFinder {
   return {
     async find(req, signal) {
       const question = await loadPrompt('heads/find', { who: req.who.identity })
-      return parseHeads(await ask(req, question, signal))
+      const [reply] = await ask(req, [question], signal)
+      return parseHeads(reply)
     },
-    async count(req, signal) {
-      return parseHeads(await ask(req, await loadPrompt('heads/count'), signal))
+    async lookOver(req, signal) {
+      const who = { who: req.who.identity, name: req.who.name }
+      const [views, heads, sheet] = await ask(req, [
+        await loadPrompt('heads/views', who),
+        await loadPrompt('heads/count'),
+        await loadPrompt('heads/sheet', who),
+      ], signal)
+      const said = parseObject(sheet)
+      const text = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
+      return {
+        views: parseHeads(views).sort((a, b) => a.box[0] - b.box[0]),
+        heads: parseHeads(heads).length,
+        writing: text(said.writing),
+        others: text(said.others),
+      }
     },
+  }
+}
+
+/** A turn as the sheet's views are made: the face pass picks a view by it (`viewFor`). */
+const turn = (facing?: Facing) =>
+  facing === 'front'
+    ? 'front'
+    : facing?.startsWith('three-quarter')
+    ? 'three-quarter'
+    : facing?.startsWith('profile')
+    ? 'profile'
+    : 'unsaid'
+
+/**
+ * Why a reference sheet is unfit for the face pass, or undefined when it's fit (2026-11-26, 42
+ * sheets by seven Image Models, docs/bench/reference-sheets/2026-11-26/check/): it must show its
+ * Subject three times, one to each third, as it's cut into thirds; a person's or creature's
+ * from the front, at a three-quarter turn and in profile, in that order, as the face pass picks the
+ * view nearest a head's turn by its place (a thing's turns Qwen3-VL doesn't read, so only its
+ * three are checked); and no writing, which the bench's FIBO 2.0 Turbo sheets had (a name). The
+ * backdrop isn't checked: every one of the 42 was read as dark and plain. Nor what else is in it
+ * (an oil lamp from the style): whether that harms the face pass is untried.
+ */
+export function sheetFlaw(look: SheetLook, name: string): string | undefined {
+  const flaws: string[] = []
+  const n = look.views.length
+  if (n !== 3) {
+    flaws.push(
+      n
+        ? `It shows ${name} ${n === 1 ? 'once' : `${n} times`}, not three times.`
+        : `${name.charAt(0).toUpperCase()}${name.slice(1)} isn't found in it.`,
+    )
+  }
+  if (n === 3 && look.heads > 0) {
+    const turns = look.views.map((v) => turn(v.facing))
+    if (turns.join() !== 'front,three-quarter,profile') {
+      flaws.push(
+        `Its views aren't the front, a three-quarter turn and the profile, in that order (it read ${
+          turns.join(', ')
+        }).`,
+      )
+    }
+  }
+  if (look.writing) flaws.push(`It has writing on it: “${look.writing}”.`)
+  return flaws.length ? flaws.join(' ') : undefined
+}
+
+/** The first JSON object in a reply (fenced or not), or {} when there's none. */
+function parseObject(reply: string): Record<string, unknown> {
+  const match = reply.match(/\{[\s\S]*\}/)
+  try {
+    const value = match && JSON.parse(match[0])
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+  } catch {
+    return {}
   }
 }
 
@@ -116,10 +193,12 @@ export function headBackends(backends: {
   /** The Backend the face pass's edits go to now; none when no Backend can run them. */
   backendOf: () => Promise<Backend | undefined>
 }): AskPicture {
-  return async (req, question, signal) => {
+  return async (req, questions, signal) => {
     const backend = req.backend ?? await backends.backendOf()
-    if (backend?.kind === 'comfyui') return backends.comfyui(backend.address)(req, question, signal)
-    if (backend?.kind === 'here' && backends.mflux) return backends.mflux(req, question, signal)
+    if (backend?.kind === 'comfyui') {
+      return backends.comfyui(backend.address)(req, questions, signal)
+    }
+    if (backend?.kind === 'here' && backends.mflux) return backends.mflux(req, questions, signal)
     throw new Error(
       'No Backend can find heads: add one with Qwen-Image 2.1 in Settings, on the Machines tab',
     )

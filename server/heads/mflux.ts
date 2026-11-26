@@ -1,7 +1,8 @@
 /**
  * Asks Qwen-Image 2.1's Qwen3-VL on mflux about a picture: `python/heads/make.py`, run once per
- * question through uv (about 21 s with Python starting and the model loading, 7–9 s of it the
- * answer, MLX's peak 10.8 GB: 2026-11-25, the Mac). Only its text encoder is read.
+ * picture through uv with every question asked of it, so the model loads once (about 21 s with
+ * Python starting and the model loading for one question, 7–9 s of it the answer, MLX's peak
+ * 10.8 GB: 2026-11-25, the Mac). Only its text encoder is read.
  */
 import { join } from '@std/path'
 import { findImageModel } from '../images/imageModels.ts'
@@ -19,7 +20,7 @@ export function mfluxAskPicture(
   opts: ToolOptions & { quantize?: () => Promise<Quantize> } = {},
 ): AskPicture {
   if (!findImageModel('mflux', QWEN.id)) throw new Error('mflux has no Qwen-Image 2.1')
-  return async (req, question, signal) => {
+  return async (req, questions, signal) => {
     const quantize = opts.quantize ? await opts.quantize() : 8
     const result = await runModelScript(
       opts.command ??
@@ -31,15 +32,18 @@ export function mfluxAskPicture(
         QWEN.baseModel!,
         '--image',
         join(req.dir, req.image),
-        '--ask',
-        question,
+        ...questions.flatMap((q) => ['--ask', q]),
         '--quantize',
         String(quantize ?? 0),
       ],
       'Qwen-Image 2.1',
       signal,
     )
-    if (typeof result.reply !== 'string') throw new Error("Qwen-Image 2.1 didn't answer")
-    return result.reply
+    const replies = result.replies
+    if (
+      !Array.isArray(replies) || replies.length !== questions.length ||
+      !replies.every((r) => typeof r === 'string')
+    ) throw new Error("Qwen-Image 2.1 didn't answer")
+    return replies as string[]
   }
 }

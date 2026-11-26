@@ -9,7 +9,13 @@ import { type Backend, BACKEND_NAMES } from '../shared/backends.ts'
 import type { TextChoice, TextModelInfo } from './text/backend.ts'
 import type { ScenarioFolder, ScenarioLibrary } from './scenario.ts'
 import type { SessionStore } from './session.ts'
-import type { Health, Phase, Session } from '../shared/session.ts'
+import {
+  type Health,
+  type Phase,
+  type Session,
+  type SheetPicture,
+  sheetsSettled,
+} from '../shared/session.ts'
 import type { SettingsStore } from './settings.ts'
 import type { TextModel } from './textModel.ts'
 import type { RoleplayModel } from './roleplay/model.ts'
@@ -53,8 +59,7 @@ import { removeExportOrder, runExport } from './export/job.ts'
 import type { HeadFinder } from './heads/heads.ts'
 import { removeFiles } from './pictures.ts'
 import { sheetFiles } from './sessionParts.ts'
-import { makeSheet, reconcileSheets, sheetsSettled, sheetsToMake } from './sheets/sheets.ts'
-import type { SheetPicture } from '../shared/session.ts'
+import { makeSheet, reconcileSheets, sheetsToMake } from './sheets/sheets.ts'
 import {
   backendOf,
   editJob,
