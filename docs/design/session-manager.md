@@ -8,7 +8,7 @@ What a Session's folder holds is declared once, per part, in `server/sessionPart
 
 ## The Session folder
 
-The folder Sessions are kept in is chosen at the top of the page (Settings links to it). Changing it never moves a Session: folders are compartments, and the ones used are remembered in `settings.json` (`sessionsFolders`), offered with how many Sessions each holds, or "not connected" when it isn't there, each with Forget. Change… opens the machine's folder dialog only when the browser is on the server's own machine; anywhere else the folder's full path is typed. Moving is refused while work runs.
+The folder Sessions are kept in is chosen at the top of the page. Changing it never moves a Session: folders are compartments, and the ones used are remembered in `settings.json` (`sessionsFolders`), offered with how many Sessions each holds, or "not connected" when it isn't there, each with Forget. Change… opens the machine's folder dialog only when the browser is on the server's own machine; anywhere else the folder's full path is typed. Moving is refused while work runs.
 
 **On the server's machine** means the request came from one of the machine's own addresses (loopback, or any of its network interfaces', so the app opened at its own LAN address counts), and so did whoever a proxy on the machine forwarded it for (`X-Forwarded-For`, which Vite's dev proxy sends): `fromThisMachine`, `server/http.ts`. It decides only what the machine shows its player, the folder dialog and its file manager, never what anyone may do.
 

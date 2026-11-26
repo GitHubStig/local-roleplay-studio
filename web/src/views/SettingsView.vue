@@ -67,7 +67,7 @@ const status = ref<{ kind: 'saved' | 'error'; message: string; issues?: string[]
 const props = defineProps<{ section?: string }>()
 defineEmits<{ close: [] }>()
 
-type SectionId = 'text' | 'images' | 'sheets' | 'voice' | 'music' | 'clips' | '3d' | 'machines' | 'sessions' | 'appearance' | 'advanced'
+type SectionId = 'text' | 'images' | 'sheets' | 'voice' | 'music' | 'clips' | '3d' | 'machines' | 'appearance' | 'advanced'
 interface Section {
   id: SectionId
   /** In the list. */
@@ -100,9 +100,8 @@ const GROUPS: readonly { label: string; sections: readonly Section[] }[] = [
     label: 'App',
     sections: [
       { id: 'machines', label: 'Machines', title: 'Machines', about: 'Where the work runs: this machine, and others it can reach.' },
-      { id: 'sessions', label: 'Sessions', title: 'Sessions', about: "Where Sessions are kept, and word when one's work is done." },
       { id: 'appearance', label: 'Appearance', title: 'Appearance', about: 'How the app looks, in this browser.' },
-      { id: 'advanced', label: 'Advanced', title: 'Advanced', about: "The seed, the Limits, and what's for looking into the app." },
+      { id: 'advanced', label: 'Advanced', title: 'Advanced', about: "The seed, the Limits, word when the queue is done, and what's for looking into the app." },
     ],
   },
 ]
@@ -835,18 +834,6 @@ function saveNow() {
             </div>
           </section>
 
-          <section v-show="tab === 'sessions'" data-tab-panel="sessions">
-            <div class="rows">
-              <SettingRow label="Session folder" as="div">
-                <template #note>Chosen on the Session manager, with the folders used before.</template>
-                <RouterLink to="/sessions" class="self-start rounded border border-line px-3 py-1 text-sm hover:border-fg sm:self-end" data-to-session-manager>
-                  Open the Session manager
-                </RouterLink>
-              </SettingRow>
-              <NotifyWhenDone />
-            </div>
-          </section>
-
           <section v-show="tab === 'appearance'" data-tab-panel="appearance">
             <div class="rows">
               <SettingRow label="Theme" as="div">
@@ -895,6 +882,7 @@ function saveNow() {
                 One file per Frame, and <code>setup.json</code> for the rest. Applies from the next
                 thing a Session does.
               </ToggleSwitch>
+              <NotifyWhenDone />
               <FeatureSwitch
                 v-model="form.features.style"
                 :availability="options.features.style"

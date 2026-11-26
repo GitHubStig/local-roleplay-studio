@@ -491,7 +491,7 @@ describe('SettingsView', () => {
     await flushPromises()
     const panel = (id: string) => wrapper.find(`[data-tab-panel="${id}"]`)
     // The sections down the left, the one shown named over its rows.
-    expect(wrapper.findAll('[data-settings-tabs] [data-tab]')).toHaveLength(11)
+    expect(wrapper.findAll('[data-settings-tabs] [data-tab]')).toHaveLength(10)
     expect(wrapper.find('[data-settings-status] [data-section-title]').text()).toBe('Text Model')
     expect(panel('text').isVisible()).toBe(true)
     expect(panel('3d').isVisible()).toBe(false)
@@ -700,12 +700,14 @@ describe('SettingsView', () => {
     expect(seed.isVisible()).toBe(false)
     await openSection(wrapper, 'advanced')
     expect(seed.isVisible()).toBe(true)
-    // With the Limits, the call log and the style scores, which aren't one model's either.
+    // With the Limits, the call log, the style scores and the notice when the queue is done,
+    // which aren't one model's either.
     for (
       const control of [
         '[data-limits]',
         '[data-call-log]',
         '[data-feature="style"]',
+        '[data-notify-done]',
       ]
     ) {
       expect(seed.find(control).exists()).toBe(true)

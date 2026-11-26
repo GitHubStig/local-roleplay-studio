@@ -124,7 +124,7 @@ The web app's dev server is pinned to port **5180** (or `WEB_PORT`) and fails, r
 
 To run a second checkout beside the first (a `git worktree`, say), give it other ports, and a Sessions folder of its own in its own `settings.json`, so the two never write to the same Sessions: `PORT=8797 WEB_PORT=5190 VOICE_PORT=8792 deno task dev`, and `deno task replay … --server http://127.0.0.1:8797`. The two don't take turns on a machine, so keep heavy work to one at a time.
 
-Everything else is chosen in Settings (in sections: Text, Images, Voice, Music, Clips and 3D for the models; Machines, Sessions, Appearance and Advanced for the app) and saved to `settings.json`, including each Backend's API key (never sent back to the browser).
+Everything else is chosen in Settings (in sections: Text, Images, Reference sheets, Voice, Music, Clips and 3D for the models; Machines, Appearance and Advanced for the app; the Session folder is chosen on the Session manager) and saved to `settings.json`, including each Backend's API key (never sent back to the browser).
 
 **What runs where.** Only a Text backend is required: Ollama, or a server with the OpenAI chat API. At startup the server works out which extras this machine can run, and says so in its log and on the Settings page:
 
