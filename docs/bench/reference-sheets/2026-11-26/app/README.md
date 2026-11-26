@@ -23,6 +23,17 @@ Kael's head in Frame 1: its face pass, the painted cut, then the cut's face pass
 ![](03-painted-cut.jpg)
 ![](04-low-angle.jpg)
 
+## "Make him smile" with nothing painted
+
+After the Edit dialog's Camera list's wording was marked as a camera move (`EditOrder.camera`), and any other edit of the whole picture told its change (`face-edited.md`): "The man is smiling warmly, his eyes crinkled." with nothing painted, Qwen-Image 2.1 Edit on Frame 1 (made from the painted cut above), on the PC, one seed (`results/smile-edit.log`): 84 s, the edit 25 s, finding Kael's head 6.7 s, his face 52 s.
+
+- **The smile kept through the face pass**, a little softer, Kael's face his sheet's. Stage 5's bench had found this wording kept it 3 of 3 for a painted area; before this change it was told the Frame's expression, which put a smile back to weary 3 of 3.
+- **The cut of the edit before faded**: the pass named only this edit's change, so an earlier edit's change is painted out as the Frame's marks are (open threads: marks on a face).
+
+The source (the cut, after its pass), the smile edit, and its face pass:
+
+![](06-smile-unpainted.jpg)
+
 ## Sheets made on mflux and checked there
 
 `deno task replay server/replay/replays/tavern-sheets.yaml --no-pictures --on mflux` on this Mac (mflux 0.24.0, 8-bit; the Session's Krea 2 + LoRA for the sheets, Qwen-Image 2.1's Qwen3-VL for the check; gemma-4-26b-heretic nvfp4 in Ollama writing the Cast, the opening and one Message meanwhile): until now the check had run on mflux only on the PC's sheets.

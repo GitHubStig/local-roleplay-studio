@@ -68,7 +68,7 @@ const editJob = (status: Job['status'], extra: Partial<Job> = {}): Job => ({
   frameIndex: 0,
   status,
   createdAt: '',
-  edit: { instruction: 'A cup', mask: 'mask-0-0000000a.png' },
+  edit: { instruction: 'A cup', camera: false, mask: 'mask-0-0000000a.png' },
   ...extra,
 })
 
@@ -222,7 +222,7 @@ describe('FrameViewer', () => {
     await side(wrapper).find('[data-edit]').trigger('click')
     await wrapper.find('[data-send-edit]').trigger('click')
     expect(wrapper.emitted('edit')).toEqual([
-      [0, { instruction: 'A cup', model: 'flux3-klein-edit', backend: 'comfyui' }],
+      [0, { instruction: 'A cup', camera: false, model: 'flux3-klein-edit', backend: 'comfyui' }],
     ])
 
     // Queued: it shows among the versions, over what it's made from, with where it's painted.
@@ -270,8 +270,27 @@ describe('FrameViewer', () => {
       "A close-up of the man's face, filling the picture.",
     )
     await wrapper.find('[data-send-edit]').trigger('click')
+    // Marked as a camera move, though its wording was changed, for its face pass.
     expect(wrapper.emitted('edit')![0][1]).toMatchObject({
       instruction: "A close-up of the man's face, filling the picture.",
+      camera: true,
+    })
+  })
+
+  it("marks an edit as no camera move once the Camera list's wording is cleared from its box", async () => {
+    const wrapper = mountIt()
+    await flushPromises()
+    await side(wrapper).find('[data-edit]').trigger('click')
+    await flushPromises()
+    const camera = wrapper.find('[data-camera-move]')
+    await camera.setValue(camera.findAll('option').find((o) => o.text() === 'Face')!.element.value)
+    await flushPromises()
+    await wrapper.find('[data-edit-instruction]').setValue('')
+    await wrapper.find('[data-edit-instruction]').setValue('Make the man smile.')
+    await wrapper.find('[data-send-edit]').trigger('click')
+    expect(wrapper.emitted('edit')![0][1]).toMatchObject({
+      instruction: 'Make the man smile.',
+      camera: false,
     })
   })
 
@@ -330,7 +349,7 @@ describe('FrameViewer', () => {
     )
     await wrapper.find('[data-send-edit]').trigger('click')
     expect(wrapper.emitted('edit')).toEqual([
-      [0, { instruction: 'Paint 1', model: 'flux3-klein-edit', backend: 'comfyui' }],
+      [0, { instruction: 'Paint 1', camera: false, model: 'flux3-klein-edit', backend: 'comfyui' }],
     ])
 
     // Not for the Original, nor an edit copied from another Session.

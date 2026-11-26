@@ -236,7 +236,7 @@ Deno.test('An edit of the whole picture, as a camera move is, has a face pass of
     await call('POST', '/api/sessions/s1/jobs', {
       kind: 'edit',
       frameIndex: 0,
-      edit: { instruction: 'A low angle, looking up at the man.' },
+      edit: { instruction: 'A low angle, looking up at the man.', camera: true },
     })
     assertEquals(await settled(call), [])
     const session = await getSession(call, 'storyboard')
@@ -291,6 +291,26 @@ Deno.test('An edit of the whole picture, as a camera move is, has a face pass of
     for (const file of [edit.file, edit.faces!.other!.file, newest.file]) {
       assert(!left.includes(file), file)
     }
+  }))
+
+Deno.test("An edit of the whole picture that isn't a camera move has its face pass told its change", () =>
+  withTempDir(async (root) => {
+    const { call, images } = await rendered(root, 3)
+    // "Make him smile" with nothing painted: told the Frame's expression, the pass put the smile
+    // back, so it's told the change, as an edit of a painted area is.
+    await call('POST', '/api/sessions/s1/jobs', {
+      kind: 'edit',
+      frameIndex: 0,
+      edit: { instruction: 'Make the man smile warmly' },
+    })
+    assertEquals(await settled(call), [])
+    const face = images.edits.at(-1)!
+    assert(
+      face.instruction.includes('keep what was changed in image 1: Make the man smile warmly.'),
+      face.instruction,
+    )
+    assert(!face.instruction.includes('(Calm)'), face.instruction)
+    assertEquals((await editJobs(call))[0].edit?.camera, false)
   }))
 
 Deno.test('An edit whose painted area touches no face keeps the faces it had', () =>

@@ -136,6 +136,11 @@ interface Draft {
   /** The area painted before, which it starts from (a mask file). */
   base?: string
   instruction: string
+  /**
+   * Written by the Camera list: a camera move, whose face pass is told the Frame's expression as a
+   * render's is, where any other edit of the whole picture is told its own change to keep.
+   */
+  camera?: boolean
   model: string
   /** The kind of backend it would rather run on, as picked here. */
   backend?: ImageBackend
@@ -396,8 +401,8 @@ function sameEditWith() {
 }
 /** A failed edit asked for again, as it was, to change before it's sent. */
 function redoFailed(job: Job) {
-  const { instruction, model, backend, mask, retry } = job.edit!
-  startDraft({ retry: !!retry, base: mask, instruction, model, backend, replaces: job })
+  const { instruction, camera, model, backend, mask, retry } = job.edit!
+  startDraft({ retry: !!retry, base: mask, instruction, camera, model, backend, replaces: job })
 }
 function addStroke(stroke: Sketch['strokes'][number]) {
   sketch.value = { ...sketch.value, strokes: [...sketch.value.strokes, stroke] }
@@ -412,7 +417,12 @@ const cameraPick = ref('')
 watch(cameraPick, (instruction) => {
   if (!instruction || !draft.value) return
   draft.value.instruction = instruction
+  draft.value.camera = true
   cameraPick.value = ''
+})
+// Emptied, the box no longer holds the move.
+watch(() => draft.value?.instruction, (told) => {
+  if (draft.value && !told?.trim()) draft.value.camera = false
 })
 function send() {
   const frame = current.value
@@ -422,6 +432,7 @@ function send() {
   const mask = layer.value?.mask()
   emit('edit', frame.index, {
     instruction: told,
+    camera: !!d.camera,
     // A name from the list of edit models, or from an edit made before: the server checks it.
     ...(d.model && { model: d.model as EditModel }),
     ...(d.backend && { backend: d.backend }),

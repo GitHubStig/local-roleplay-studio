@@ -14,6 +14,11 @@ import type { SessionSettings } from './settings.ts'
  */
 export interface EditOrder {
   instruction: string
+  /**
+   * Written by the Edit dialog's Camera list: a camera move, whose face pass is told the Frame's
+   * expression as a render's is; any other edit is told its own change to keep (ADR 0045).
+   */
+  camera: boolean
   model?: EditModel
   /** The kind of backend it would rather run on, picked in the Edit dialog; else Settings'. */
   backend?: ImageBackendKind

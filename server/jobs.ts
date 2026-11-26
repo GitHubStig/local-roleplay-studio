@@ -603,7 +603,7 @@ const MAX_MASK = 8_000_000
 
 /**
  * An edit's order from a request, its painted area still the PNG it was sent as (base64), or why
- * it isn't one.
+ * it isn't one. A camera move only when it says so (`camera: true`, the Camera list's wording).
  */
 export function editOrder(body: unknown): EditOrder | string {
   const b = body as {
@@ -612,6 +612,7 @@ export function editOrder(body: unknown): EditOrder | string {
     backend?: unknown
     mask?: unknown
     retry?: unknown
+    camera?: unknown
   } | undefined
   const retry = b?.retry === true ? { retry: true } : {}
   const instruction = typeof b?.instruction === 'string' ? b.instruction.trim() : ''
@@ -626,7 +627,11 @@ export function editOrder(body: unknown): EditOrder | string {
   if (b?.backend !== undefined && !IMAGE_BACKENDS.includes(b.backend as ImageBackendKind)) {
     return `backend must be one of: ${IMAGE_BACKENDS.join(', ')}`
   }
+  if (b?.camera !== undefined && typeof b.camera !== 'boolean') {
+    return 'camera must be true or false'
+  }
   const selectedModel = {
+    camera: b?.camera === true,
     ...(model && { model }),
     ...(b?.backend !== undefined && { backend: b.backend as ImageBackendKind }),
   }

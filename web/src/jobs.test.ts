@@ -100,7 +100,7 @@ describe('An edit with a face pass', () => {
     status: 'done',
     createdAt: '',
     machine: 'here',
-    edit: { instruction: 'A low angle.' },
+    edit: { instruction: 'A low angle.', camera: true },
     faces,
   })
 

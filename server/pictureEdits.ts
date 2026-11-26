@@ -110,7 +110,7 @@ export async function editFrame<S extends Session>(
   const from = (redo ? line.at(-2) : line.at(-1)) ?? picture
   const dir = deps.store.dir(session.id)
   const name = `edit-${index}-${crypto.randomUUID().slice(0, 8)}`
-  const { instruction, mask } = order
+  const { instruction, mask, camera } = order
   // Never the seed its source was made with: on ComfyUI the same seed at the same size is the
   // same starting noise, and an edit started from its own picture's noise, with that picture as
   // its reference, redraws the picture over-sharpened and ignores the instruction ("noise replay",
@@ -187,10 +187,11 @@ export async function editFrame<S extends Session>(
   // Then its face pass, in a Session with sheets, as a render's (ADR 0045,
   // stage 5): never one edit with both instructions, as a sheet passed into an edit that redraws a
   // person pulls their expression and pose to the sheet's. Only the heads its painted area touches,
-  // told to keep what the edit changed (a smile, a cap, a cut), which the pass painted out when told
-  // the Frame's expression or nothing; or every head for an edit of all of the picture, as a camera
-  // move is, told the Frame's expression as a render's pass is, which kept a close-up's lowered gaze
-  // where naming the move didn't (docs/bench/reference-sheets/2026-11-26/edits/).
+  // or every head for an edit of all of the picture; each told to keep what the edit changed (a
+  // smile, a cap, a cut), which the pass painted out when told the Frame's expression or nothing.
+  // But a camera move (the Camera list's) is told the Frame's expression, as a render's pass is,
+  // which kept a close-up's lowered gaze where naming the move didn't
+  // (docs/bench/reference-sheets/2026-11-26/edits/).
   const faces = facesOfFrame(session, index)
   if (!faces) return updated
   const faced = await passFaces(
@@ -201,7 +202,8 @@ export async function editFrame<S extends Session>(
       file: image,
       seed,
       edited: true,
-      ...(mask && { area: mask, change: instruction }),
+      ...(mask && { area: mask }),
+      ...((mask || !camera) && { change: instruction }),
     },
     faces,
     emit,
