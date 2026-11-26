@@ -36,7 +36,10 @@ const words = computed(() => {
   const r = running.value
   if (r) {
     const more = waiting.value ? `${waiting.value} waiting` : ''
-    return [`${jobName(r)} · ${jobStatus(r, props.describe)}`, more].filter(Boolean).join(' · ')
+    // A render on its faces says the step it's on, not its long name, which the list below has:
+    // beside the Faces chip on a phone, its name was all that showed.
+    const doing = r.faces ? jobStatus(r, props.describe) : `${jobName(r)} · ${jobStatus(r, props.describe)}`
+    return [doing, more].filter(Boolean).join(' · ')
   }
   if (failed.value) return `${jobName(failed.value)} ${jobStatus(failed.value).replace(/^Failed/, 'failed')}`
   const next = props.jobs.find((j) => j.status === 'queued')

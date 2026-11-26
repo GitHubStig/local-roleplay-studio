@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { pickedEdit, type Picture, useFaces } from '../api'
 import { HOLD_MS } from '../contextMenu'
 import { usePictureMenu } from '../composables/usePictureMenu'
+import Icon from './Icon.vue'
 import PopMenu from './PopMenu.vue'
 
 /**
@@ -11,7 +12,8 @@ import PopMenu from './PopMenu.vue'
  * were repainted, with Without the face pass, which uses the render for that Frame; the chip then
  * offers the faces back. Holding it (a long press on a touch screen, as a long press on the
  * picture opens its menu) shows the other version while held (`peek`). Shown while the picture's
- * Original is what the Frame shows, not one of its edits.
+ * Original is what the Frame shows, not one of its edits. On a phone it's an icon, so the line of
+ * the Frame's work beside it has the room.
  */
 const props = defineProps<{ picture?: Picture; index?: number }>()
 const emit = defineEmits<{ peek: [file: string | null] }>()
@@ -66,8 +68,9 @@ async function use(without: boolean, close: () => void) {
     <template #button="{ toggle }">
       <button
         type="button"
-        class="shrink-0 rounded-full bg-black/70 px-2.5 py-0.5 text-sm whitespace-nowrap text-white select-none [-webkit-touch-callout:none]"
+        class="shrink-0 rounded-full bg-black/70 px-2.5 py-0.5 text-sm whitespace-nowrap text-white select-none max-sm:flex max-sm:h-5 max-sm:items-center max-sm:px-1.5 [-webkit-touch-callout:none]"
         :title="`${label}: ${names}`"
+        :aria-label="label"
         data-faces-chip
         @pointerdown="press"
         @pointerup="lift"
@@ -76,7 +79,8 @@ async function use(without: boolean, close: () => void) {
         @contextmenu.prevent.stop
         @click.stop="click(toggle)"
       >
-        {{ label }}
+        <Icon name="face" class="sm:hidden" :class="{ 'opacity-60': faces.without }" />
+        <span class="max-sm:hidden">{{ label }}</span>
       </button>
     </template>
     <template #default="{ close }">
