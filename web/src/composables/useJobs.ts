@@ -24,7 +24,7 @@ const mainJob = (running: Job[]): Job | null =>
 /**
  * A Session's queued background work (a Roleplay's or a Chain's), followed while anything is
  * queued or running. A job that finishes or fails has changed the Session, so `onSettled` reloads
- * it; `onError` hears why a job couldn't be queued, and, with `reportFailures`, why one failed
+ * it, as does a render reaching its face pass, as its picture is saved by then; `onError` hears why a job couldn't be queued, and, with `reportFailures`, why one failed
  * (for a view that shows failures only in its Queue tab), then `onFailureGone` hears the same
  * words once that job isn't failed any more (retried or dismissed), for the view to clear them. When the whole queue has finished, it
  * may notify the player (`useDoneNotice`). `imageModel` is the Session's Image
@@ -51,11 +51,14 @@ export function useJobs(
   const runningOn = (index: number) =>
     mainJob(runningJobs.value.filter((j) => j.frameIndex === index && !j.sheet))
   /**
-   * A Frame's queued, running and failed jobs, in queue order (a done one's work is on the Frame).
+   * A Frame's queued, running and failed jobs, in queue order (a done one's work is on the Frame),
+   * and a done render whose faces were skipped, which says so on its picture until dismissed.
    * A reference sheet's is the Session's, shown on its Look, though it's queued on Frame 0.
    */
   const jobsFor = (index: number) =>
-    jobs.value.filter((j) => j.frameIndex === index && j.status !== 'done' && !j.sheet)
+    jobs.value.filter((j) =>
+      j.frameIndex === index && !j.sheet && (j.status !== 'done' || !!j.faces?.skipped)
+    )
   /**
    * A job of this kind is already queued or running on this Frame; for a render, by the Session's
    * Image Model.
@@ -91,7 +94,12 @@ export function useJobs(
     } catch {
       return
     }
-    const settled = openJobs.value.some((j) => !now.some((n) => n.id === j.id && isOpen(n)))
+    // A render saves its picture before its face pass, so it shows while the faces are repainted.
+    const rendered = now.some((n) =>
+      n.status === 'running' && n.faces && !jobs.value.some((j) => j.id === n.id && j.faces)
+    )
+    const settled = rendered ||
+      openJobs.value.some((j) => !now.some((n) => n.id === j.id && isOpen(n)))
     const failed = now.filter((n) =>
       n.status === 'failed' && openJobs.value.some((j) => j.id === n.id)
     )

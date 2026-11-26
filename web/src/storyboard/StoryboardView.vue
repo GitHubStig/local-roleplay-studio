@@ -198,6 +198,8 @@ async function plan() {
  */
 /** While the Frames are written, the one shown follows the writing, until another is picked. */
 let following = false
+/** The Subjects whose sheets writing waits for, while it does; none otherwise. */
+const waitingForSheets = ref<string[]>([])
 function followWriting(index: number) {
   if (!following || index >= frames.value.length) return
   selected.value = index
@@ -212,7 +214,9 @@ async function writeFrames() {
   await run({ kind: 'write', phase: 'text', frameIndex: first }, () =>
     writeStoryboard(props.id, (event) => {
       if (track(event)) return
-      if (event.type === 'written-frame') {
+      if (event.type === 'waiting-for-sheets') waitingForSheets.value = event.subjects
+      else if (event.type === 'written-frame') {
+        waitingForSheets.value = []
         const s = session.value!
         s.frames = s.frames.map((f) => (f.index === event.frame.index ? event.frame : f))
         work.value = { ...work.value!, frameIndex: event.frame.index + 1 }
@@ -220,6 +224,7 @@ async function writeFrames() {
       } else if (event.type === 'written') session.value = event.session
     }))
   following = false
+  waitingForSheets.value = []
 }
 
 /** Back to the plan, once confirmed: every Frame's sentences and pictures go. */
@@ -1157,7 +1162,7 @@ const pickFromAll = (index: number) => pick(index)
         </p>
         <p v-if="!busy && !writingStarted" class="min-w-0 flex-1 text-muted" data-review>
           Drag the Beats to reorder; nothing is written or rendered yet.
-          <template v-if="session.settings.sheets">The sheets are settled when the Frames are written.</template>
+          <template v-if="session.settings.sheets">The sheets are settled when the Frames are written. Write Frames waits for those still being made.</template>
         </p>
         <div
           v-else-if="work?.kind === 'write'"
@@ -1173,7 +1178,10 @@ const pickFromAll = (index: number) => pick(index)
               :style="{ width: `${(100 * writtenCount) / session.frames.length}%` }"
             />
           </div>
-          <span class="shrink-0">{{ writtenCount }} of {{ session.frames.length }} written</span>
+          <span v-if="waitingForSheets.length" class="shrink-0" data-waiting-for-sheets>
+            Waiting for {{ new Intl.ListFormat('en').format(waitingForSheets.map((n) => `${n}'s`)) }} {{ waitingForSheets.length > 1 ? 'sheets' : 'sheet' }}…
+          </span>
+          <span v-else class="shrink-0">{{ writtenCount }} of {{ session.frames.length }} written</span>
         </div>
         <span v-else class="min-w-0 flex-1" />
         <button

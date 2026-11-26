@@ -770,6 +770,13 @@ export const queueEdit = (id: string, frameIndex: number, edit: EditOrder) =>
 export const pickVersion = <S>(id: string, index: number, picked: number) =>
   put<S>(`/api/sessions/${id}/pictures/${index}/picked`, { picked })
 
+/**
+ * Uses the render before its face pass for a Frame's picture (`without`), or its faces from the
+ * sheets again; returns the Session.
+ */
+export const useFaces = <S>(id: string, index: number, without: boolean) =>
+  put<S>(`/api/sessions/${id}/pictures/${index}/faces`, { without })
+
 /** Deletes edit `version` of a Frame's picture, the newest by its edit model; returns the Session. */
 export const deleteNewestEdit = <S>(id: string, index: number, version: number) =>
   request<S>(`/api/sessions/${id}/pictures/${index}/edits/${version}`, { method: 'DELETE' })

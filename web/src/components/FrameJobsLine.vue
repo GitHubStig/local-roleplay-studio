@@ -25,6 +25,8 @@ const { jobName } = useImageModels()
 const running = computed(() => props.jobs.find((j) => j.status === 'running'))
 const waiting = computed(() => props.jobs.filter((j) => j.status === 'queued').length)
 const failed = computed(() => props.jobs.find((j) => j.status === 'failed'))
+/** A render done without its face pass (no one with a sheet in it): said until it's dismissed. */
+const skipped = computed(() => props.jobs.find((j) => j.status === 'done' && j.faces?.skipped))
 const open = computed(() => props.jobs.filter(isOpen))
 /**
  * The line's words: the job running, then how many wait; else a failure; else the next to run,
@@ -37,7 +39,8 @@ const words = computed(() => {
     return [`${jobName(r)} · ${jobStatus(r, props.describe)}`, more].filter(Boolean).join(' · ')
   }
   if (failed.value) return `${jobName(failed.value)} ${jobStatus(failed.value).replace(/^Failed/, 'failed')}`
-  const next = props.jobs.find((j) => j.status === 'queued')!
+  const next = props.jobs.find((j) => j.status === 'queued')
+  if (!next) return 'Faces skipped'
   return `${jobName(next)} · waiting` + (waiting.value > 1 ? ` · ${waiting.value - 1} more` : '')
 })
 const progress = computed(() => {
@@ -80,13 +83,13 @@ const progress = computed(() => {
             Retry
           </button>
           <button
-            v-if="failed && !running"
+            v-if="(failed || (skipped && !waiting)) && !running"
             type="button"
             class="pr-1.5 text-white/80 hover:text-white"
             title="Dismiss"
             aria-label="Dismiss"
             data-jobs-line-dismiss
-            @click.stop="emit('drop', failed)"
+            @click.stop="emit('drop', (failed ?? skipped)!)"
           >
             <Icon name="x" />
           </button>

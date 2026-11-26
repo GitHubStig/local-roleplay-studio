@@ -5,7 +5,7 @@ export interface MenuAt {
 }
 
 /** How long a finger rests on something before its menu opens, and how far it may drift meanwhile. */
-const HOLD_MS = 500
+export const HOLD_MS = 500
 const DRIFT_PX = 10
 
 /**

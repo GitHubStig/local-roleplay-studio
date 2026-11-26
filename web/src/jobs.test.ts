@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Job } from './api'
-import { formingOf, jobForming, openJob } from './jobs'
+import { formingOf, jobForming, jobStatus, openJob, renderSteps } from './jobs'
 
 const session = { id: 's1' }
 
@@ -46,5 +46,48 @@ describe('openJob', () => {
     const { look: _, ...noLook } = places
     openJob(sheet, noLook)
     expect(places.go).toHaveBeenCalledWith(0)
+  })
+})
+
+describe('A render with a face pass', () => {
+  const render = (faces: Job['faces'], status: Job['status'] = 'running'): Job => ({
+    id: 'j1',
+    kind: 'render',
+    frameIndex: 3,
+    status,
+    createdAt: '',
+    machine: 'here',
+    ...(status === 'running' && { phase: 'faces' as const, progress: { step: 30, total: 50 } }),
+    faces,
+  })
+
+  it('says its two steps: rendered, then whose faces', () => {
+    const job = render({ subjects: ['Kael', 'Elara Vance'] })
+    expect(jobStatus(job)).toBe('Faces · Kael and Elara Vance… step 30 of 50')
+    expect(renderSteps(job, 'Rendered')).toEqual([
+      { text: 'Rendered', state: 'done' },
+      { text: 'Faces · Kael and Elara Vance', state: 'running' },
+    ])
+  })
+
+  it('says the faces were skipped, and why', () => {
+    const job = render(
+      { subjects: [], skipped: 'No one with a sheet in it: saved as rendered.' },
+      'done',
+    )
+    expect(jobStatus(job)).toBe('Faces skipped')
+    expect(renderSteps(job, 'Rendered')[1]).toEqual({
+      text: 'Faces skipped',
+      state: 'skipped',
+      note: 'No one with a sheet in it: saved as rendered.',
+    })
+  })
+
+  it("says whose head wasn't found", () => {
+    const job = render({ subjects: ['Kael'], missed: ['Elara Vance'] }, 'done')
+    expect(jobStatus(job)).toBe('Done · faces of Kael')
+    expect(renderSteps(job, 'Rendered')[1].note).toBe(
+      'Elara Vance: no head found, left as rendered.',
+    )
   })
 })

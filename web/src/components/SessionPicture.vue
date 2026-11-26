@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { inject, ref, watch } from 'vue'
-import type { Clip, Job, JobKind, Made3d, Picture } from '../api'
+import { type Clip, imageUrl, type Job, type JobKind, type Made3d, type Picture } from '../api'
 import ClipOverlay from './ClipOverlay.vue'
 import EditedChip from './EditedChip.vue'
+import FacesChip from './FacesChip.vue'
 import FrameJobsLine from './FrameJobsLine.vue'
 import Icon from './Icon.vue'
 import PictureToolbar from './PictureToolbar.vue'
@@ -112,6 +113,12 @@ function onLoad(e: Event) {
 const shown = () => !!displayed.value || !!forming.value
 /** The picture's menu, from a right-click or a long press on it. */
 const pictureMenu = usePictureMenu()
+/** The other version of a face pass, shown while its chip is held: the render before, or the faces. */
+const peeking = ref<string | null>(null)
+const peekSrc = () => {
+  const id = pictureMenu?.session.value?.sessionId
+  return peeking.value && id ? imageUrl(id, peeking.value) : null
+}
 </script>
 
 <template>
@@ -144,6 +151,13 @@ const pictureMenu = usePictureMenu()
           :class="{ 'opacity-50': dimmed }"
           data-frame-picture
           @load="onLoad"
+        />
+        <img
+          v-if="peekSrc()"
+          :src="peekSrc()!"
+          alt=""
+          class="absolute inset-0 block h-full w-full rounded-xl object-cover"
+          data-peek
         />
         <img
           v-if="forming"
@@ -210,6 +224,7 @@ const pictureMenu = usePictureMenu()
       <slot name="overlay" />
       <span class="pointer-events-none! ml-auto" />
       <EditedChip :picture="picture" />
+      <FacesChip :picture="picture" :index="index" @peek="(file) => (peeking = file)" />
       <button
         type="button"
         class="flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-xs backdrop-blur-sm"

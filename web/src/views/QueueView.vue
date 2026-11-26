@@ -9,6 +9,7 @@ import { useQueue } from '../composables/useQueue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import { frameName } from '../frameName'
 import { isOpen, jobLink, jobStatus } from '../jobs'
+import RenderSteps from '../components/RenderSteps.vue'
 import {
   lasted,
   type MachineQueue,
@@ -227,6 +228,7 @@ const SECTIONS = [
                     <template v-else>{{ row.call.status === 'running' ? 'Writing…' : 'Waiting for the job running' }} · </template>
                     {{ timing(row) }}
                   </span>
+                  <RenderSteps v-if="row.type === 'job'" :job="row.job" />
                 </component>
                 <button
                   v-if="row.type === 'job'"

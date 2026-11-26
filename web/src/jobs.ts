@@ -33,8 +33,17 @@ export const isOpen = (job: Pick<Job, 'status'>) =>
  */
 export function jobStatus(job: Job, special?: (job: Job) => string | undefined): string {
   if (job.status === 'failed') return `Failed: ${job.error}`
-  if (job.status === 'done') return job.export ? `Exported to ${job.export.folder}` : 'Done'
+  if (job.status === 'done') {
+    if (job.export) return `Exported to ${job.export.folder}`
+    if (job.faces?.skipped) return 'Faces skipped'
+    if (job.faces) return `Done · faces of ${names(job.faces.subjects)}`
+    return 'Done'
+  }
   if (job.status === 'queued') return 'Queued'
+  if (job.faces && job.phase !== 'download') {
+    const doing = `Faces · ${names(job.faces.subjects)}…`
+    return job.progress ? `${doing} step ${job.progress.step} of ${job.progress.total}` : doing
+  }
   if (job.phase === 'download') return DOWNLOADING
   const said = special?.(job)
   if (said) return said
@@ -49,13 +58,43 @@ export function jobStatus(job: Job, special?: (job: Job) => string | undefined):
   return job.progress ? `${doing} step ${job.progress.step} of ${job.progress.total}` : doing
 }
 
+const names = (list: string[]) => new Intl.ListFormat('en').format(list)
+
+/** One of a render's two steps in a Session with reference sheets: rendered, then its faces. */
+export interface RenderStep {
+  text: string
+  state: 'done' | 'running' | 'skipped'
+  /** What more there is to say of it: why the faces were skipped, whose head wasn't found. */
+  note?: string
+}
+
+/**
+ * A render's two steps, once it has reached its face pass (`Job.faces`): rendered, by its Image
+ * Model, then the faces, being repainted, repainted or skipped. None for any other job.
+ */
+export function renderSteps(job: Job, rendered: string): RenderStep[] {
+  const faces = job.faces
+  if (job.kind !== 'render' || !faces) return []
+  const missed = faces.missed?.length
+    ? `${names(faces.missed)}: no head found, left as rendered.`
+    : undefined
+  return [
+    { text: rendered, state: 'done' },
+    faces.skipped ? { text: 'Faces skipped', state: 'skipped', note: faces.skipped } : {
+      text: `Faces · ${names(faces.subjects)}`,
+      state: job.status === 'running' ? 'running' : 'done',
+      ...(missed && { note: missed }),
+    },
+  ]
+}
+
 /**
  * How a picture shows work on it (its edge's sweep): waiting for another render,
  * or rendering (and downloading a model first); nothing for other phases.
  */
 export function sweepOf(phase: string | null | undefined): 'queued' | 'image' | null {
   if (phase === 'queued') return 'queued'
-  return phase === 'image' || phase === 'download' ? 'image' : null
+  return phase === 'image' || phase === 'download' || phase === 'faces' ? 'image' : null
 }
 
 /**

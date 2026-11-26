@@ -3,6 +3,7 @@ import type { Job } from '../api'
 import { useImageModels } from '../composables/useSettingsOptions'
 import Icon from './Icon.vue'
 import { jobStatus } from '../jobs'
+import RenderSteps from './RenderSteps.vue'
 
 /** A Frame's queued, running and failed jobs, each cancellable (or retried) in place. */
 defineProps<{
@@ -13,22 +14,23 @@ defineProps<{
 defineEmits<{ retry: [job: Job]; drop: [job: Job] }>()
 /** What the job's button does: cancel it as it runs, take it off the queue, or dismiss a failure. */
 const dropLabel = (job: Job) =>
-  job.status === 'failed' ? 'Dismiss' : job.status === 'running' ? 'Cancel' : 'Remove from queue'
+  job.status === 'failed' || job.status === 'done' ? 'Dismiss' : job.status === 'running' ? 'Cancel' : 'Remove from queue'
 const { jobName } = useImageModels()
 </script>
 
 <template>
   <div v-if="jobs.length" class="flex flex-col gap-1">
   <p v-for="job in jobs" :key="job.id" class="flex items-center gap-1.5 rounded-md border border-line bg-surface px-2 py-1" data-frame-job>
-    <span
-      class="min-w-0 flex-1"
-      :class="{
-        'animate-pulse text-info': job.status === 'running',
-        'text-muted': job.status === 'queued',
-        'text-danger': job.status === 'failed',
-      }"
-    >
-      {{ jobName(job) }} · {{ jobStatus(job, describe) }}
+    <span class="min-w-0 flex-1">
+      <span
+        class="block"
+        :class="{
+          'animate-pulse text-info': job.status === 'running',
+          'text-muted': job.status === 'queued',
+          'text-danger': job.status === 'failed',
+        }"
+      >{{ jobName(job) }} · {{ jobStatus(job, describe) }}</span>
+      <RenderSteps :job="job" />
     </span>
     <button
       v-if="job.status === 'failed'"

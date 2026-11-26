@@ -130,4 +130,40 @@ describe('useJobs', () => {
     expect(jobs.jobsFor(0).map((j) => j.kind)).toEqual(['upscale'])
     expect(jobs.runningOn(0)).toBeNull()
   })
+
+  it('reloads the Session as a render reaches its face pass, its render saved by then', async () => {
+    const { useJobs } = await import('./useJobs')
+    const onSettled = vi.fn()
+    const jobs = useJobs('s1', { onSettled, onError: () => {} })
+    const render = (extra: Partial<Job>) =>
+      ({
+        id: 'r1',
+        kind: 'render',
+        frameIndex: 2,
+        status: 'running',
+        createdAt: '',
+        ...extra,
+      }) as Job
+    queueJob.mockResolvedValueOnce([render({ phase: 'image' })])
+    listJobs.mockResolvedValueOnce([render({ phase: 'faces', faces: { subjects: ['Kael'] } })])
+    listJobs.mockResolvedValueOnce([render({ phase: 'faces', faces: { subjects: ['Kael'] } })])
+    await jobs.queue('render', 2)
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(onSettled).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(onSettled).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps a render whose faces were skipped on its Frame, done, to say so', async () => {
+    const { useJobs } = await import('./useJobs')
+    const jobs = useJobs('s1', { onSettled: () => {}, onError: () => {} })
+    const done = (faces?: Job['faces']) =>
+      ({ id: 'r1', kind: 'render', frameIndex: 2, status: 'done', createdAt: '', faces }) as Job
+    queueJob.mockResolvedValueOnce([done({ subjects: [], skipped: 'No one with a sheet in it.' })])
+    await jobs.queue('render', 2)
+    expect(jobs.jobsFor(2).length).toBe(1)
+    queueJob.mockResolvedValueOnce([done({ subjects: ['Kael'] })])
+    await jobs.queue('render', 2)
+    expect(jobs.jobsFor(2).length).toBe(0)
+  })
 })

@@ -5,6 +5,7 @@ import { useImageModels } from '../composables/useSettingsOptions'
 import { useQueue } from '../composables/useQueue'
 import { frameName } from '../frameName'
 import { isOpen, jobStatus } from '../jobs'
+import RenderSteps from './RenderSteps.vue'
 import type { QueueJob } from '../queue'
 import Icon from './Icon.vue'
 
@@ -62,6 +63,7 @@ async function drop(list: readonly QueueJob[]) {
                   <span class="block text-xs" :class="job.status === 'failed' ? 'text-danger wrap-break-word' : 'truncate text-muted'">
                     <template v-if="part.key === 'elsewhere'">{{ sessionOf(job.sessionId)?.title }} · </template>{{ machineName(job.machine) }} · {{ jobStatus(job) }}
                   </span>
+                  <RenderSteps :job="job" />
                 </span>
               </button>
               <button
