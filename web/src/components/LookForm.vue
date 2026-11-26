@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { type Job, type Look, redoSheet, type Sheet, type StoryboardSession, tickSheet } from '../api'
+import { type Job, type Look, redoSheet, setSheets, type Sheet, type StoryboardSession, tickSheet } from '../api'
 import type { RoleplaySession } from '../roleplay/api'
 import { computed } from 'vue'
 import { type SaveLine, useAutosave } from '../composables/useAutosave'
@@ -8,10 +8,14 @@ import CollapsibleTextarea from './CollapsibleTextarea.vue'
 import LookSubject from './LookSubject.vue'
 import SaveStatus from './SaveStatus.vue'
 import SubjectSheet from './SubjectSheet.vue'
+import ToggleSwitch from './ToggleSwitch.vue'
+import { useSheetsBlocker } from '../composables/useSheetsBlocker'
 
 /** A Session's reference sheets, for the Look to show under each Subject's identity. */
 export interface LookSheets {
   sessionId: string
+  /** The Session has them: turned on or off here until the story begins. */
+  on: boolean
   /** One per Subject of the Look as saved, by name. */
   list: Sheet[]
   /** The Session's open or failed sheet jobs. */
@@ -94,7 +98,13 @@ function remove(i: number) {
 
 // --- Reference sheets: one per Subject as saved, by its name.
 
-const sheetOf = (name: string) => props.sheets?.list.find((s) => s.subject === name.trim())
+const sheetOf = (name: string) =>
+  props.sheets?.on ? props.sheets.list.find((s) => s.subject === name.trim()) : undefined
+/** Why sheets can't be turned on here, or null: asked only while they can still change. */
+const sheetsBlocker = useSheetsBlocker()
+async function turnSheets(on: boolean) {
+  if (await flush()) onSheet(() => setSheets(props.sheets!.sessionId, on))
+}
 /**
  * A Subject's sheet job to show: one queued or running, else a failed one while there's still no
  * sheet (a failure stays in the queue until dismissed, though a Redo has made the sheet since).
@@ -152,6 +162,21 @@ defineExpose({ flush })
         <slot name="actions" />
       </summary>
       <div class="mt-3 flex flex-col gap-3">
+        <!-- Until the story begins: a Session started without sheets can have them, as one restarted can. -->
+        <ToggleSwitch
+          v-if="sheets && !sheets.settled"
+          title="Reference sheets"
+          :disabled="disabled || (!sheets.on && !!sheetsBlocker)"
+          :model-value="sheets.on"
+          class="text-sm"
+          data-look-sheets
+          @update:model-value="turnSheets"
+        >
+          The same faces from Frame to Frame; about 3× as long a picture.
+          <template v-if="!sheets.on && sheetsBlocker" #after>
+            <span class="text-sm text-muted" data-look-sheets-blocker>{{ sheetsBlocker }}</span>
+          </template>
+        </ToggleSwitch>
         <div :class="cards ? 'grid grid-cols-[repeat(auto-fit,minmax(18rem,1fr))] items-start gap-3' : 'contents'" data-look-subjects>
         <LookSubject
           v-for="(subject, i) in draft.subjects"

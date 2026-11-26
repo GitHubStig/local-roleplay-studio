@@ -458,12 +458,16 @@ export function createHandler(
   /**
    * Brings a Session's reference sheets in line with its Look while they can still change
    * (`reconcileSheets`), and the queue with them: a `sheet` job for each ticked sheet not made yet,
-   * none for one unticked, gone, or made again from a new identity. Called whenever its Look or
-   * its sheets change.
+   * none for one unticked, gone, or made again from a new identity, and none at all once its
+   * sheets are turned off. Called whenever its Look or its sheets change.
    */
   async function queueSheets(id: string) {
     const loaded = await deps.sessions.load(id)
-    if (!loaded || loaded.kind === 'chain' || !loaded.settings.sheets) return
+    if (!loaded || loaded.kind === 'chain') return
+    if (!loaded.settings.sheets) {
+      jobs.cancelWhere(id, (j) => j.kind === 'sheet' && isOpen(j))
+      return
+    }
     let session = loaded
     // Settled once the story begins; but the first Look's sheets are made even then, as Begin
     // doesn't wait for the Look (a newcomer to it after that gets none).

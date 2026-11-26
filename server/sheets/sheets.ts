@@ -234,6 +234,24 @@ export async function redoSheet(
   return updated
 }
 
+/**
+ * Turns a Session's reference sheets on or off (`settings.sheets`) while the story hasn't begun:
+ * for one started without them, or back in its Cast or plan review after a Restart. Turned off, the
+ * sheets made are kept, so turning them on again makes only what's missing.
+ */
+export function setSheets(
+  store: RenderDeps['store'],
+  session: WithSheets,
+  on: boolean,
+): Promise<WithSheets> {
+  return updateSession(store, session.id, session.kind, (latest) => {
+    if (sheetsSettled(latest)) {
+      throw new SheetError('The sheets are settled once the story has begun')
+    }
+    return { ...latest, settings: { ...latest.settings, sheets: on } }
+  })
+}
+
 /** Ticks or unticks Subject `subject`'s sheet: whether its face is repainted from it. */
 export function tickSheet(
   store: RenderDeps['store'],

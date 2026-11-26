@@ -8,6 +8,9 @@ vi.mock('../api', async (importOriginal) => ({
   tickSheet: vi.fn(),
   redoSheet: vi.fn(),
   changeSheet: vi.fn(),
+  setSheets: vi.fn(),
+  getSettings: vi.fn(() => Promise.resolve({ textModel: 'x' })),
+  getSettingsOptions: vi.fn(() => Promise.resolve({ textModels: ['x'] })),
 }))
 
 const look: api.Look = {
@@ -38,6 +41,7 @@ function shown(sheets: Partial<LookSheets> = {}) {
       kept: ['Kael', 'Elara'],
       sheets: {
         sessionId: 'r1',
+        on: true,
         list: [sheet('Kael'), sheet('Elara', false)],
         jobs: [],
         settled: false,
@@ -56,6 +60,7 @@ beforeEach(() => {
   vi.mocked(api.tickSheet).mockReset().mockResolvedValue(answered)
   vi.mocked(api.redoSheet).mockReset().mockResolvedValue(answered)
   vi.mocked(api.changeSheet).mockReset()
+  vi.mocked(api.setSheets).mockReset().mockResolvedValue(answered)
 })
 
 describe("LookForm's reference sheets", () => {
@@ -135,5 +140,19 @@ describe("LookForm's reference sheets", () => {
     expect(wrapper.find('[data-sheet-tick]').exists()).toBe(false)
     expect(wrapper.find('[data-sheet="Kael"] [data-sheet-settled]').exists()).toBe(true)
     expect(wrapper.find('[data-sheet="Elara"]').exists()).toBe(false)
+  })
+
+  it('turns the sheets on or off until the story begins, then shows no switch', async () => {
+    const { wrapper, saved } = shown({ on: false })
+    // Off: no ticks, no sheets, only the switch.
+    expect(wrapper.find('[data-sheet-tick]').exists()).toBe(false)
+    const toggle = wrapper.find<HTMLInputElement>('[data-look-sheets] input')
+    expect(toggle.element.checked).toBe(false)
+    await toggle.setValue(true)
+    await flushPromises()
+    expect(api.setSheets).toHaveBeenCalledWith('r1', true)
+    expect(saved).toHaveBeenCalledWith(answered)
+    await wrapper.setProps({ sheets: { ...wrapper.props('sheets')!, on: true, settled: true } })
+    expect(wrapper.find('[data-look-sheets]').exists()).toBe(false)
   })
 })

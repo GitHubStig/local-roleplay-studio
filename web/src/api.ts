@@ -600,6 +600,10 @@ export const redoSheet = (id: string, subject: string) =>
 export const tickSheet = (id: string, subject: string, ticked: boolean) =>
   put<StoryboardSession | RoleplaySession>(sheetPath(id, subject), { ticked })
 
+/** A Session's reference sheets turned on or off, until its story begins. */
+export const setSheets = (id: string, on: boolean) =>
+  put<StoryboardSession | RoleplaySession>(`/api/sessions/${id}/sheets`, { on })
+
 /**
  * Change…: the Subject's identity rewritten by the Text Model with `note` ("green eyes"), answered
  * (`identity`) but not saved: saved in the Look, its sheet is made again from it.

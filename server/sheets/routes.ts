@@ -1,13 +1,14 @@
 /**
- * A Storyboard's or a Roleplay's reference sheets, by Subject (`sheets.ts`): Redo one with the
- * next seed, or tick it (its face repainted from it) or untick it. Each is refused once the story
+ * A Storyboard's or a Roleplay's reference sheets (`sheets.ts`): turned on or off, and by
+ * Subject, Redo one with the next seed, or tick it (its face repainted from it) or untick it. Each
+ * is refused once the story
  * has begun; the sheets to make are queued after (`queueSheets`). The sheets themselves are made
  * from the Look, as it's written and edited.
  */
 import { error, json, readJson, type Route } from '../http.ts'
 import type { AppContext } from '../appContext.ts'
 import type { Session } from '../../shared/session.ts'
-import { changeSheet, redoSheet, tickSheet, type WithSheets } from './sheets.ts'
+import { changeSheet, redoSheet, setSheets, tickSheet, type WithSheets } from './sheets.ts'
 
 export function sheetRoutes(ctx: AppContext): Route[] {
   const { deps, locked, stream, frameDeps, featureOff, queueSheets } = ctx
@@ -29,6 +30,23 @@ export function sheetRoutes(ctx: AppContext): Route[] {
     })
 
   return [
+    // `{ on }`: the Session's sheets turned on or off, while the story hasn't begun (one made
+    // without them, or after a Restart). On, the sheets of its Look are queued; off, those queued
+    // are cancelled, and those made kept.
+    ['PUT', new URLPattern({ pathname: '/api/sessions/:id/sheets' }), async (req, p) => {
+      const body = await readJson(req) as { on?: unknown } | undefined
+      if (typeof body?.on !== 'boolean') return error('on must be true or false', 400)
+      const on = body.on
+      return await locked(p.id!, 'edit', async (session: Session) => {
+        if (session.kind === 'chain') return error('A Chain has no sheets', 409)
+        const off = on && await featureOff('sheets')
+        if (off) return off
+        await setSheets(deps.sessions, session, on)
+        await queueSheets(session.id)
+        return json(await deps.sessions.load(session.id))
+      })
+    }],
+
     // Change…: `{ note }`, the identity rewritten with it by the Text Model (streamed: its phase and
     // thinking, then `identity`), not saved: saved in the Look, the sheet is made again from it.
     ['POST', path('/change'), async (req, p) => {

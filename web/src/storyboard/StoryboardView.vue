@@ -301,12 +301,13 @@ async function saveLookDraft(draft: Look): Promise<Look> {
   return session.value.look!
 }
 
-/** The Look's reference sheets, where the Storyboard has them: settled once a Frame is written. */
+/** The Look's reference sheets, where the Storyboard has them or can still turn them on: settled once a Frame is written. */
 const lookSheets = computed<LookSheets | undefined>(() => {
   const s = session.value
-  if (!s?.settings.sheets) return undefined
+  if (!s || (!s.settings.sheets && writingStarted.value)) return undefined
   return {
     sessionId: props.id,
+    on: s.settings.sheets,
     list: s.sheets,
     jobs: jobs.value.filter((j) => j.sheet && j.status !== 'done'),
     settled: writingStarted.value,

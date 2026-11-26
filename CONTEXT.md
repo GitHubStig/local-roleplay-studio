@@ -77,7 +77,7 @@ One of a Look's: a person, creature, animal or object the story follows from pic
 _Avoid_: Person (for one of a Look's), character, entity
 
 **Reference sheet**:
-One render of a Subject from the front, at a three-quarter turn and in profile, made from its identity in the Look's style before the story begins, for the face pass to repaint it from. A Storyboard or a Roleplay has them if started with them; each Subject's is ticked by default.
+One render of a Subject from the front, at a three-quarter turn and in profile, made from its identity in the Look's style before the story begins, for the face pass to repaint it from. A Storyboard or a Roleplay has them if started with them, or turned on in its Look before its story begins; each Subject's is ticked by default.
 _Avoid_: Portrait, character sheet, turnaround, model sheet
 
 **Face pass**:

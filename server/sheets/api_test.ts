@@ -185,6 +185,60 @@ Deno.test("A Storyboard's sheets are made as it's planned; a Session without she
     assertEquals(images.sizes.length, 1)
   }))
 
+Deno.test('Sheets are turned on or off until the story begins, and again after a Restart', () =>
+  withTempDir(async (root) => {
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x', features: SHEETS_ON },
+      features,
+      imageGenerator: fakeImageGenerator(),
+      roleplayModel: scriptedRoleplayModel({
+        casts: [testCast],
+        replies: [replyOf('You are late.')],
+        looks: [testLook('Ink.', 'Mira Vance, 34.', 'Sam Reyes, 25.')],
+      }),
+    })
+    await call('POST', '/api/sessions', { kind: 'roleplay', brief: 'A storm.', sheets: false })
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/cast'))
+    assertEquals(await settled(call), [])
+    assertEquals(await sheetJobs(call), [])
+
+    // Turned on in the Cast review: its Look's sheets are made.
+    const turned = await sessionFrom(await call('PUT', '/api/sessions/s1/sheets', { on: true }))
+    assertEquals(turned.settings.sheets, true)
+    assertEquals(await settled(call), [])
+    assertEquals(await sheetJobs(call), ['Mira Vance done', 'Sam Reyes done'])
+    const made = (await getSession(call, 'roleplay')).sheets.map((s) => s.made)
+
+    // Off: the sheets made are kept, so on again makes nothing more.
+    await call('DELETE', '/api/sessions/s1/jobs/finished')
+    const off = await sessionFrom(await call('PUT', '/api/sessions/s1/sheets', { on: false }))
+    assertEquals(off.settings.sheets, false)
+    await call('PUT', '/api/sessions/s1/sheets', { on: true })
+    assertEquals(await settled(call), [])
+    assertEquals(await sheetJobs(call), [])
+    assertEquals((await getSession(call, 'roleplay')).sheets.map((s) => s.made), made)
+
+    // Begun: settled. Restarted: back in the Cast review, they can be turned off again.
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/begin', { picture: false }))
+    const refused = await call('PUT', '/api/sessions/s1/sheets', { on: false })
+    assertEquals(
+      (await refusalIn(refused)).error,
+      'The sheets are settled once the story has begun',
+    )
+    await call('POST', '/api/sessions/s1/restart')
+    const restarted = await sessionFrom(
+      await call('PUT', '/api/sessions/s1/sheets', { on: false }),
+    )
+    assertEquals(restarted.settings.sheets, false)
+
+    // A Chain has none; and the switch takes only true or false.
+    await call('POST', '/api/sessions', { kind: 'chain', brief: 'A storm.' })
+    const chain = await call('PUT', '/api/sessions/s2/sheets', { on: true })
+    assertEquals((await refusalIn(chain)).error, 'A Chain has no sheets')
+    assertEquals((await call('PUT', '/api/sessions/s1/sheets', { on: 'yes' })).status, 400)
+  }))
+
 Deno.test("A Roleplay begun before its Look is written still gets that Look's sheets", () =>
   withTempDir(async (root) => {
     let release!: () => void
