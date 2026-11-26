@@ -50,6 +50,19 @@ export const UPSCALERS = [
 export type Upscaler = (typeof UPSCALERS)[number]['id']
 
 /**
+ * The Image Models that drew reference sheets unfit for the face pass in the bench, and how, for
+ * the pickers to say (2026-11-26, the PC: six sheets each, three Subjects at two seeds, by seven
+ * models; docs/bench/reference-sheets/2026-11-26/check/). A sheet that fails the check is made
+ * again once at the next seed, so these still make sheets, less surely. Those not listed drew six
+ * fit sheets of six: Qwen-Image 2.1 and its Turbo, Krea 2 + LoRA, FLUX.3 Klein, Z-Image Turbo.
+ * Unlisted models weren't tried.
+ */
+export const SHEET_FLAWS: Readonly<Record<string, string>> = {
+  'fibo-2.0-turbo': 'wrote a name on 2 sheets of 6',
+  'anima-turbo': 'drew the views out of order, two alike or four times on 3 sheets of 6',
+}
+
+/**
  * The edit models (ADR 0021): each repaints a picture as told, in an area painted over it, whatever
  * model rendered the picture. Each is known by its name, wherever it runs (ADR 0022): the kinds of
  * backend that run it are listed, and an edit goes where Settings send edits. Settings offers

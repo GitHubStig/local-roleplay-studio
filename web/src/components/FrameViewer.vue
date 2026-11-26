@@ -54,8 +54,10 @@ const props = withDefaults(
     name?: (index: number) => string
     /** The Session's jobs (`useJobs`): its edits being made, or failed, show as versions. */
     jobs?: readonly Job[]
+    /** The Session has reference sheets: an edit is followed by a face pass, as the Edit dialog says. */
+    sheets?: boolean
   }>(),
-  { name: frameName, jobs: () => [] },
+  { name: frameName, jobs: () => [], sheets: false },
 )
 /** The Frame open in the viewer, by index; null keeps it closed. */
 const open = defineModel<number | null>('open', { required: true })
@@ -502,6 +504,10 @@ const madeFrom = computed(() => {
   return source ? editName(p!, source) : 'the Original'
 })
 /** How the draft's edit model likes to be told what to paint. */
+/** The edit model the face pass after an edit repaints faces by (Settings'), where the Session has sheets. */
+const facesBy = computed(() =>
+  props.sheets && settings.value ? modelLabel(settings.value.faceEditModel) : ''
+)
 const prompting = computed(() =>
   settingsOptions.value?.editModels.find((m) => m.id === draft.value?.model)?.prompting
 )
@@ -809,6 +815,10 @@ const action =
           Say what to paint, not what's wrong. Painted more than one area? Say what goes in each:
           “on his face: …; on the gun: …”. With nothing painted, the whole picture is repainted.
           <template v-if="replacing">It replaces {{ replacing }}.</template>
+          <span v-if="facesBy" class="block" data-edit-faces>
+            Then the faces it touches are repainted from their reference sheets by {{ facesBy }}
+            (Settings' Reference sheets), keeping what you asked for.
+          </span>
         </p>
       </div>
     </template>

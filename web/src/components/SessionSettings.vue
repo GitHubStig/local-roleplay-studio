@@ -1,5 +1,5 @@
-<script setup lang="ts" generic="S extends { id: string; settings: SessionSettings; frames: readonly PicturedFrame[] }">
-import type { PicturedFrame, SessionSettings } from '../api'
+<script setup lang="ts" generic="S extends { id: string; kind: SessionKind; settings: SessionSettings; frames: readonly PicturedFrame[] }">
+import type { PicturedFrame, SessionKind, SessionSettings } from '../api'
 import { useFeatures } from '../composables/useFeatures'
 import { useImageModels } from '../composables/useSettingsOptions'
 import Icon from './Icon.vue'

@@ -1659,6 +1659,7 @@ const pickFromAll = (index: number) => pickFromStrip(index)
       :session-id="session.id"
       :frames="session.frames"
       :image-model="session.settings.imageModel"
+      :sheets="session.settings.sheets"
       :jobs="jobs"
       @step="goToFrame"
       @edit="queueEdit"

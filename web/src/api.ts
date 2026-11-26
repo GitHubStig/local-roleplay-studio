@@ -34,6 +34,7 @@ export {
   IMAGE_BACKEND_NAMES,
   type ImageModelOption,
   type ImagePrompt,
+  SHEET_FLAWS,
   type Upscaler,
 } from '../../shared/images.ts'
 import type { ImageBackendKind, ImagePrompt } from '../../shared/images.ts'
@@ -58,6 +59,7 @@ export {
   SESSION_TITLE_LENGTH,
   type SessionKind,
   type Sheet,
+  sheetsSettled,
   type StoryboardFrame,
   type Subject,
   type Written,

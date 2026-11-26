@@ -1236,6 +1236,7 @@ const pickFromAll = (index: number) => pick(index)
       :session-id="session.id"
       :frames="session.frames"
       :image-model="session.settings.imageModel"
+      :sheets="session.settings.sheets"
       :name="frameTitle"
       :jobs="jobs"
       @edit="queueEdit"

@@ -9,7 +9,11 @@ import FrameViewer from './FrameViewer.vue'
 vi.mock('../ask', () => ({ ask: vi.fn() }))
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../api')>()),
-  getSettings: vi.fn(() => Promise.resolve({ editModel: 'qwen-image-2.1-edit' } as Settings)),
+  getSettings: vi.fn(() =>
+    Promise.resolve(
+      { editModel: 'qwen-image-2.1-edit', faceEditModel: 'qwen-image-2.1-edit' } as Settings,
+    )
+  ),
   getSettingsOptions: vi.fn(() =>
     Promise.resolve({
       editModels: [
@@ -150,6 +154,19 @@ describe('FrameViewer', () => {
       instruction: 'Paint 2, bluer',
       retry: true,
     })
+  })
+
+  it('says an edit is followed by the face pass, by its edit model, where the Session has sheets', async () => {
+    for (const sheets of [true, false]) {
+      const wrapper = mountIt({ sheets })
+      await flushPromises()
+      await side(wrapper).find('[data-edit]').trigger('click')
+      await flushPromises()
+      const line = wrapper.find('[data-edit-faces]')
+      expect(line.exists()).toBe(sheets)
+      if (sheets) expect(line.text()).toContain('reference sheets by Qwen-Image 2.1 Edit')
+      wrapper.unmount()
+    }
   })
 
   it("paints a new edit over the newest version, then shows it as it's made", async () => {

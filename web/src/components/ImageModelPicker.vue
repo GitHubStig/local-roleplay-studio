@@ -1,12 +1,16 @@
-<script setup lang="ts" generic="S extends { id: string; settings: SessionSettings; frames: readonly PicturedFrame[] }">
+<script setup lang="ts" generic="S extends { id: string; kind: SessionKind; settings: SessionSettings; frames: readonly PicturedFrame[] }">
 import { computed, ref } from 'vue'
 import {
   IMAGE_BACKEND_NAMES,
   type ImageBackend,
   type PicturedFrame,
+  type SessionKind,
   type SessionSettings,
   setImageModel,
+  SHEET_FLAWS,
+  sheetsSettled,
 } from '../api'
+import { useFeatures } from '../composables/useFeatures'
 import SelectField from './SelectField.vue'
 import { byLabel, imageModelOf, useSettingsOptions } from '../composables/useSettingsOptions'
 
@@ -19,6 +23,16 @@ import { byLabel, imageModelOf, useSettingsOptions } from '../composables/useSet
  * render. Renders already under way finish on the old model.
  */
 const props = defineProps<{ session: S }>()
+const { settings } = useFeatures()
+/**
+ * Whether its reference sheets are made by its own Image Model (Settings' choice is the Session's),
+ * while they can still be made: then each model that made unfit sheets in a bench says so.
+ */
+const sheetsByIt = computed(() =>
+  props.session.settings.sheets && settings.value?.sheetImageModel === '' &&
+  !sheetsSettled(props.session)
+)
+const sheetFlaw = (id: string) => (sheetsByIt.value ? SHEET_FLAWS[id] : undefined)
 const emit = defineEmits<{ switched: [session: S]; failed: [message: string] }>()
 const options = useSettingsOptions()
 const switching = ref(false)
@@ -40,7 +54,8 @@ const groups = computed(() =>
     name: IMAGE_BACKEND_NAMES[backend],
     models: (options.value?.imageModels[backend] ?? []).map((m) => ({
       value: value(backend, m.id),
-      label: `${m.label} · ${IMAGE_BACKEND_NAMES[backend]}`,
+      label: `${m.label} · ${IMAGE_BACKEND_NAMES[backend]}` +
+        (sheetFlaw(m.id) ? ` (sheets: ${sheetFlaw(m.id)})` : ''),
     })).sort(byLabel),
   })).filter((g) => g.models.length)
 )
@@ -104,6 +119,10 @@ async function pick(v: string) {
     </label>
     <span class="col-start-2 text-xs" title="The steps each render takes with this model" data-image-steps>
       {{ steps }} {{ steps === 1 ? 'step' : 'steps' }} a render
+    </span>
+    <span v-if="sheetFlaw(current)" class="col-start-2 text-xs text-warn" data-image-model-sheets>
+      It makes this Session's reference sheets: in a bench it {{ sheetFlaw(current) }}. Each is
+      checked and made again once if it fails.
     </span>
   </div>
 </template>

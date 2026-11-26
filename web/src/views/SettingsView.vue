@@ -11,6 +11,7 @@ import {
   type ClipSize,
   type ImageBackend,
   saveSettings,
+  SHEET_FLAWS,
   type Settings,
   type SettingsOptions,
   type Work,
@@ -642,9 +643,18 @@ function saveNow() {
                 <SettingRow label="Sheets made by">
                   <SelectField v-model="form.sheetImageModel" data-sheet-image-model>
                     <option value="">The Session's Image Model</option>
-                    <option v-for="m in imageModels" :key="m.id" :value="m.id">{{ m.label }}</option>
+                    <option v-for="m in imageModels" :key="m.id" :value="m.id">
+                      {{ m.label }}{{ SHEET_FLAWS[m.id] ? ` (${SHEET_FLAWS[m.id]})` : '' }}
+                    </option>
                   </SelectField>
-                  <template #note>Any Image Model; a sheet is one render.</template>
+                  <template #note>
+                    Any Image Model; a sheet is one render. Each is checked by Qwen3-VL (three views in
+                    order, no writing) and made again once if it fails; one that fails twice is kept,
+                    saying why.
+                    <span v-if="SHEET_FLAWS[form.sheetImageModel]" class="text-warn" data-sheet-model-flaw>
+                      In a bench, this one {{ SHEET_FLAWS[form.sheetImageModel] }}.
+                    </span>
+                  </template>
                 </SettingRow>
               </template>
             </div>

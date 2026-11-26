@@ -7,13 +7,22 @@ import ImageModelPicker from './ImageModelPicker.vue'
 
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
+  getSettings: vi.fn(),
   getSettingsOptions: vi.fn(),
   setImageModel: vi.fn(),
 }))
+// Settings make a Session's sheets with its own Image Model.
+vi.mocked(api.getSettings).mockResolvedValue({ sheetImageModel: '' } as api.Settings)
 
-type Picked = { id: string; settings: api.SessionSettings; frames: api.PicturedFrame[] }
+type Picked = {
+  id: string
+  kind: api.SessionKind
+  settings: api.SessionSettings
+  frames: api.PicturedFrame[]
+}
 const session = (settings: Partial<api.SessionSettings> = {}): Picked => ({
   id: 's1',
+  kind: 'roleplay',
   settings: { imageModel: 'qwen-image-2.1', steps: 25, ...settings } as api.SessionSettings,
   frames: [],
 })
@@ -49,6 +58,40 @@ beforeEach(() => {
 enableAutoUnmount(afterEach)
 
 describe('ImageModelPicker', () => {
+  it("says which models made unfit sheets, where the Session's own makes its sheets", async () => {
+    const mountWithFibo = (picked: Picked) => {
+      vi.mocked(api.getSettingsOptions).mockResolvedValue({
+        imageModels: {
+          mflux: [],
+          comfyui: [{ ...IMAGE_MODELS.mflux[0], id: 'fibo-2.0-turbo', label: 'FIBO 2.0 Turbo' }],
+        },
+        imageBackends: ['comfyui'],
+        imageModelsOn: {},
+      } as unknown as api.SettingsOptions)
+      return loadSettingsOptions().then(async () => {
+        const wrapper = mount(ImageModelPicker<Picked>, { props: { session: picked } })
+        await flushPromises()
+        return wrapper
+      })
+    }
+    const fibo = { imageModel: 'fibo-2.0-turbo', imageBackend: 'comfyui' as const }
+    const withSheets = await mountWithFibo(session({ sheets: true, ...fibo }))
+    expect(withSheets.find('[data-image-model]').text()).toContain(
+      `FIBO 2.0 Turbo · ComfyUI (sheets: ${api.SHEET_FLAWS['fibo-2.0-turbo']})`,
+    )
+    expect(withSheets.find('[data-image-model-sheets]').text()).toContain(
+      'in a bench it wrote a name',
+    )
+    // Without sheets, or once the story has begun, nothing is said.
+    const without = await mountWithFibo(session(fibo))
+    expect(without.find('[data-image-model]').text()).not.toContain('sheets:')
+    const begun = {
+      ...session({ sheets: true, ...fibo }),
+      frames: [{ index: 0, pictures: [] } as unknown as api.PicturedFrame],
+    }
+    expect((await mountWithFibo(begun)).find('[data-image-model-sheets]').exists()).toBe(false)
+  })
+
   it('lists each Image Model under each kind of backend that has it, by name within each', async () => {
     // The lists have Qwen-Image 2.1 first in both; each group is by name, mflux before ComfyUI.
     expect(groupsOf(await mountIt(session()))).toEqual([
