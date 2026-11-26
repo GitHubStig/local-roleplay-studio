@@ -45,14 +45,26 @@ Through the app: the cut edit, then its face pass (the cap painted out).
 
 ![](04-mac-through-the-app.jpg)
 
+## The Turbo edit's cache at `gpu` (2026-11-26, the PC)
+
+The Turbo's edit workflow (`qwen-image-2.1-turbo-edit.json`) has `QwenImage21Cache` at `auto`, as ComfyUI's template has it; `auto` had put the base model's cache in RAM on the PC on 2026-11-22, with two portraits at 25 steps. Run by `turbo.ts`, the app's own ComfyUI edit, on the Windows PC's ComfyUI 0.46.3 sent from the Mac, once as the workflow is and once with the cache at `gpu`, `int8`, the PC's free RAM and VRAM watched through `/system_stats`: the Storyboard's renders before their face pass, a red cut painted over Kael's head (Frame 1), and the Camera list's low angle of Kael alone (Frame 1) and of Elara and Kael (Frame 4), seeds 10 and 11 (`results/turbo-auto.log`, `turbo-gpu.log`).
+
+- **No faster**: 17.6–23.1 s an edit at `auto`, 16.5–20.1 s at `gpu`; the 8 steps themselves 3.0–3.4 s against 2.9–4.0 s. The rest of the ~18 s is loading the model, encoding and decoding, which the cache doesn't touch: with one image and 8 steps there's little to keep.
+- **No RAM moved**: the PC's least free RAM was 8.1–8.5 GB either way, VRAM 0.7–1.2 GB, so `auto` didn't spill to RAM here.
+- **The same pictures**: the painted cut a mean difference of 0.03 levels in 255, the low angles 0.8–1.5 (2–5% of pixels by more than 8), the same by eye.
+
+**Kept at `auto`**, the template's, as `gpu` gains nothing. Rows: the cut, Kael's low angle, the two's; `auto` left, `gpu` right, seed 10.
+
+![](05-turbo-auto-and-gpu.jpg)
+
 ## Not done
 
 - **A ComfyUI on a Mac**: `gpu` there is untried, as this Mac's ComfyUI hasn't Qwen-Image 2.1's files; this Mac's ComfyUI 0.46.3 offers `auto`, `gpu`, `cpu` and `off` for it.
-- **The Turbo edit's own cache** (`qwen-image-2.1-turbo-edit.json`) is at `auto`, as ComfyUI's template has it, which on the PC put it in RAM in the 2026-11-22 bench: whether `gpu` speeds the Turbo's edits is untried.
 - **The player's own Qwen-Image 2.1 edits with mflux's step cache**: one run through the app, looking right; not compared against the same edit without it.
 
 ## Files
 
+- `turbo.ts`: the Turbo's edits at the workflow's cache setting, timed, with the PC's free memory.
 - `run.sh`: the face pass on the two Frames on the PC, through `../edits/passes.ts`; `run-mac.sh`, `passes-mflux.ts` and `bin/`: the same on this Mac's mflux, without and with the step cache.
 - `results/`: the PC's times without (`cache-off.log`) and with (`cache-on.log`) and its edit through the app; the Mac's (`mac-step-cache.log`, `mac-through-the-app.log`).
 - Not kept: the passes' full-size pictures (in the figure). The Storyboard is kept for the benches that follow, and deleted after them.

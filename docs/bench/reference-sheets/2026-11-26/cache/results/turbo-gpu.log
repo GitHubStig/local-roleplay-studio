@@ -1,0 +1,6 @@
+cut gpu seed 10: cut-gpu-seed10.png, 17.8 s in all, steps 4.0 s, least free RAM 8.5 GB, VRAM 0.8 GB
+cut gpu seed 11: cut-gpu-seed11.png, 18.4 s in all, steps 2.9 s, least free RAM 8.3 GB, VRAM 0.9 GB
+low1 gpu seed 10: low1-gpu-seed10.png, 20.1 s in all, steps 3.2 s, least free RAM 8.5 GB, VRAM 1.1 GB
+low1 gpu seed 11: low1-gpu-seed11.png, 18.3 s in all, steps 3.1 s, least free RAM 8.4 GB, VRAM 0.9 GB
+low2 gpu seed 10: low2-gpu-seed10.png, 16.5 s in all, steps 3.1 s, least free RAM 8.5 GB, VRAM 0.7 GB
+low2 gpu seed 11: low2-gpu-seed11.png, 17.1 s in all, steps 2.9 s, least free RAM 8.6 GB, VRAM 0.8 GB
