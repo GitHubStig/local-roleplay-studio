@@ -60,7 +60,8 @@ export function fillWorkflow(workflow: Workflow, values: Record<string, unknown>
 /**
  * Queues a filled workflow and follows it over the WebSocket to its end. Cancel interrupts just
  * this prompt; afterwards its prompt leaves ComfyUI's history, and ComfyUI unloads its models. If
- * ComfyUI stops answering meanwhile (`watchAlive`), the job fails rather than waiting for good.
+ * ComfyUI stops answering meanwhile, or no longer has the prompt (`watchAlive`), the job fails
+ * rather than waiting for good.
  * With `onPreview`, the sampler sends a preview of the picture at every step (a JPEG at half size,
  * decoded cheaply from the latent: no slower, measured 2026-10-09), which it passes on.
  */
@@ -78,6 +79,7 @@ export async function runWorkflow(
   const before = await freeVram(base)
   let promptId: string | undefined
   let answering = true
+  let lost = false
   try {
     const queued = await fetch(`${base}/prompt`, {
       method: 'POST',
@@ -101,10 +103,17 @@ export async function runWorkflow(
     }
     signal.addEventListener('abort', cancel, { once: true })
     const stalled = new AbortController()
-    const watchdog = watchAlive(base, checkEveryMs, () =>
-      (answering = false) || stalled.abort(
-        new Error('ComfyUI stopped answering (it may have crashed): restart it, then try again'),
-      ))
+    const watchdog = watchAlive(base, promptId, checkEveryMs, (why) => {
+      if (why === 'dead') answering = false
+      else lost = true
+      stalled.abort(
+        new Error(
+          why === 'dead'
+            ? 'ComfyUI stopped answering (it may have crashed): restart it, then try again'
+            : 'ComfyUI no longer has this job: the connection to it was lost (did this computer sleep?), or it restarted. Try again',
+        ),
+      )
+    })
     try {
       return await finished(
         socket,
@@ -121,7 +130,7 @@ export async function runWorkflow(
   } finally {
     // Awaited, so the next job (the Text Model, say) starts once ComfyUI has let go of the GPU;
     // but not after a Cancel, which returns at once, or once ComfyUI stopped answering.
-    const cleaned = cleanUp(base, socket, messages, promptId, before)
+    const cleaned = cleanUp(base, socket, messages, promptId, before, !lost)
     if (!signal.aborted && answering) await cleaned
   }
 }
@@ -154,7 +163,8 @@ async function released(base: string, before: number, ms: number) {
  * After a prompt: takes it out of ComfyUI's history, closes the WebSocket and unloads ComfyUI's
  * models. ComfyUI writes a prompt to its history only after it's done with it, after it has said
  * so (`execution_success`, `execution_error` or `execution_interrupted`), so this waits for that
- * first (up to 10 s), finished, failed or cancelled alike. Deleted any sooner it stayed there,
+ * first (up to 10 s), finished, failed or cancelled alike; not for a prompt ComfyUI no longer had
+ * (`heard` false), as nothing will say so over the WebSocket. Deleted any sooner it stayed there,
  * prompt text and all: after a Cancel (seen on Windows) and after a render that succeeded (seen on
  * the Mac, 2026-10-07), whenever the delete beat the write.
  */
@@ -164,8 +174,9 @@ async function cleanUp(
   messages: Inbox,
   promptId: string | undefined,
   before: number | undefined,
+  heard: boolean,
 ) {
-  if (promptId) await stopped(socket, messages, promptId, 10_000)
+  if (promptId && heard) await stopped(socket, messages, promptId, 10_000)
   socket.close()
   if (promptId) post(base, '/history', { delete: [promptId] })
   await post(base, '/free', { unload_models: true, free_memory: true })
@@ -203,26 +214,58 @@ function stopped(
 
 /**
  * Asks ComfyUI every `everyMs` whether it still answers (`GET /system_stats`, which it does while
- * it works), and calls `onDead` after two checks in a row get no answer: a ComfyUI that crashed
- * can keep its port open and the WebSocket with it, so nothing else would end the wait (seen on
- * Windows, 2026-10-07: a "Fatal Python error: Aborted" while loading a model). Returns the timer.
+ * it works) and still has the prompt (`GET /queue`), and calls `onStop`:
+ *
+ * - `dead` after two checks in a row get no answer: a ComfyUI that crashed can keep its port open
+ *   and the WebSocket with it, so nothing else would end the wait (seen on Windows, 2026-10-07: a
+ *   "Fatal Python error: Aborted" while loading a model);
+ * - `lost` after `LOST_AFTER` checks in a row find `promptId` neither running nor queued: after
+ *   this computer sleeps, the WebSocket can stay half-open, hearing nothing more, while the prompt
+ *   finishes and its picture (`SaveImageWebsocket`) goes to no one; or ComfyUI restarted.
+ *
+ * Returns the timer.
  */
 function watchAlive(
   base: string,
+  promptId: string,
   everyMs: number,
-  onDead: () => void,
+  onStop: (why: 'dead' | 'lost') => void,
 ): ReturnType<typeof setInterval> {
   let misses = 0
+  let gone = 0
   let checking = false
   return setInterval(async () => {
     if (checking) return
     checking = true
     const answered = await fetch(`${base}/system_stats`, { signal: AbortSignal.timeout(everyMs) })
       .then((r) => (r.body?.cancel(), r.ok), () => false)
+    const has = answered ? await queues(base, promptId, everyMs) : undefined
     checking = false
     misses = answered ? 0 : misses + 1
-    if (misses >= 2) onDead()
+    gone = has === false ? gone + 1 : 0
+    if (misses >= 2) onStop('dead')
+    else if (gone >= LOST_AFTER) onStop('lost')
   }, everyMs)
+}
+
+/**
+ * How many checks in a row must miss a prompt before it's lost. A prompt that finished leaves
+ * ComfyUI's queue before it says so over the WebSocket: 4.5 s before, measured on the Windows
+ * PC's ComfyUI 0.46.3 (2026-11-26, a Qwen-Image 2.1 Turbo edit), against the 45–60 s four checks
+ * take at the usual 15 s.
+ */
+const LOST_AFTER = 4
+
+/** Whether ComfyUI's queue has `promptId` running or waiting; undefined if it doesn't answer. */
+async function queues(base: string, promptId: string, ms: number): Promise<boolean | undefined> {
+  const queue = await fetch(`${base}/queue`, { signal: AbortSignal.timeout(ms) })
+    .then((r) => r.ok ? r.json() : r.body?.cancel())
+    .catch(() => undefined) as
+      | { queue_running?: unknown[][]; queue_pending?: unknown[][] }
+      | undefined
+  if (!queue) return undefined
+  return [...queue.queue_running ?? [], ...queue.queue_pending ?? []]
+    .some((item) => item[1] === promptId)
 }
 
 /**

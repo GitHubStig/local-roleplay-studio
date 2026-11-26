@@ -12,6 +12,12 @@ export function fakeComfyUI(
     finish?: string
     /** Once a workflow is queued, stop answering, keeping the port and WebSocket open (a crash). */
     dies?: boolean
+    /**
+     * Once a workflow is queued, drop it from the queue and say nothing more of it over the
+     * WebSocket, which stays open, while still answering (the WebSocket half-open after this
+     * computer slept, the prompt finished meanwhile; or a ComfyUI restarted).
+     */
+    forgets?: boolean
     /** A clip the workflow's `out` node made, in temp. */
     audio?: { filename: string; bytes: Uint8Array<ArrayBuffer> }
     /** A video the workflow's `out` node made, in the output folder. */
@@ -48,6 +54,8 @@ export function fakeComfyUI(
   const stats: (number | undefined)[] = []
   /** Requests left hanging by a dead ComfyUI, answered when the server closes. */
   const hung: (() => void)[] = []
+  /** The prompt running, as `GET /queue` lists it, until it's finished or interrupted. */
+  let running: string | undefined
   const server = Deno.serve({ port: 0, onListen: () => {} }, async (req) => {
     const url = new URL(req.url)
     const path = url.pathname
@@ -92,6 +100,8 @@ export function fakeComfyUI(
       queued.push(body.prompt)
       extras.push(body.extra_data)
       const promptId = 'p1'
+      if (opts.forgets) return Response.json({ prompt_id: promptId, number: 1, node_errors: {} })
+      running = promptId
       const socket = sockets.get(body.client_id)!
       const send = (type: string, data: object) =>
         socket.send(JSON.stringify({ type, data: { prompt_id: promptId, ...data } }))
@@ -126,6 +136,7 @@ export function fakeComfyUI(
             })
           }
           send('execution_success', {})
+          running = undefined
           // As ComfyUI: written to the history after it says so, then "executing" with no node.
           setTimeout(() => {
             post({ path: '(in history)', body: null })
@@ -134,6 +145,7 @@ export function fakeComfyUI(
           }, 30)
         } else if (finish !== 'hang') {
           send('execution_error', { node_type: 'KSampler', exception_message: finish })
+          running = undefined
           // As ComfyUI: the failed prompt is written to the history too, then "executing" with no node.
           setTimeout(() => (send('executing', { node: null }), allSent()), 30)
         }
@@ -153,6 +165,12 @@ export function fakeComfyUI(
       })
       return Response.json({ name: image.name, subfolder: '', type: form.get('type') })
     }
+    if (path === '/queue' && req.method === 'GET') {
+      return Response.json({
+        queue_running: running ? [[1, running, {}, {}, []]] : [],
+        queue_pending: [],
+      })
+    }
     if (['/interrupt', '/queue', '/free', '/history'].includes(path)) {
       const body = await req.json()
       post({ path, body })
@@ -162,7 +180,10 @@ export function fakeComfyUI(
         const send = (type: string, data: object) => {
           for (const socket of sockets.values()) socket.send(JSON.stringify({ type, data }))
         }
-        setTimeout(() => send('execution_interrupted', { prompt_id: 'p1' }), 50)
+        setTimeout(() => {
+          running = undefined
+          send('execution_interrupted', { prompt_id: 'p1' })
+        }, 50)
         setTimeout(() => {
           post({ path: '(in history)', body: null })
           send('executing', { node: null, prompt_id: 'p1' })

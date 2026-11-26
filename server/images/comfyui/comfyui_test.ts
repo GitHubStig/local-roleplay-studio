@@ -517,6 +517,32 @@ Deno.test('A ComfyUI that stops answering mid-render fails the render instead of
     }
   }))
 
+Deno.test('A render ComfyUI no longer has, though it still answers, fails instead of hanging', () =>
+  withTempDir(async (dir) => {
+    // As after this computer sleeps mid-render: the WebSocket stays open but hears nothing more,
+    // and the prompt has left ComfyUI's queue (finished meanwhile, its picture sent to no one).
+    const comfy = fakeComfyUI({ forgets: true })
+    try {
+      const started = performance.now()
+      await assertRejects(
+        () =>
+          comfyuiImageGenerator({ address: comfy.url, checkEveryMs: 100 }).generate(
+            { prompt: 'x', seed: 1, settings: settings(), dir, name: 'f' },
+            new AbortController().signal,
+          ),
+        Error,
+        'ComfyUI no longer has this job',
+      )
+      // Four checks that don't find it, about 0.4 s, not the whole wait; nor the clean-up's wait
+      // for the prompt to say it stopped (10 s), as nothing will.
+      assertEquals(performance.now() - started < 2000, true)
+      // Still taken out of its history, in case it's there.
+      assertEquals(comfy.posted.find((p) => p.path === '/history')?.body, { delete: ['p1'] })
+    } finally {
+      await comfy.close()
+    }
+  }))
+
 Deno.test('Every ComfyUI workflow loads, and fills with nothing left over', async () => {
   const fills = [
     ...COMFYUI_MODELS.map((model) => ({

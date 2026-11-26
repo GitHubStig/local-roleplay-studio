@@ -13,7 +13,6 @@ What the app does or could do: features, models it offers, how it's installed an
   - **Marks on a face, and an earlier edit's change**: a render's pass paints out bruises, and a later edit's pass paints out an earlier edit's change (a cut, a smile, a cap, three times on 2026-11-26), as each pass names only its own. Naming them likely keeps them. Untried.
   - **An object's sheet in the face pass** (its instruction speaks of a face and hair): untried through the app.
   - **The style's lamp in a sheet**: the check notes it; whether it harms the pass is untried.
-  - **A ComfyUI job after the Mac sleeps**: a bench waited for ever; whether the app's jobs do is untried.
   - **The face edit's caches, what's left**: a Mac's ComfyUI at `gpu`, and the player's own Qwen-Image 2.1 edits on mflux with the step cache against without.
   - **A Storyboard's plan writes thin identities** for someone the Scenario leaves vague (no age, build or hair; an expression or clothing instead).
   - **The PC's own run of the app**: only the PC can.
